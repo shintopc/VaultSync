@@ -132,13 +132,13 @@ fun VideosPage(
             previewerState.visible -> scope.launch { previewerState.closeTransform() }
             dragSelectState.selectMode -> dragSelectState.exitSelectMode()
             castVM.castMode.value -> castVM.exitCastMode()
-            !showFolderBrowser && videosVM.bucketId.value.isNotEmpty() -> {
-                videosVM.bucketId.value = ""
-                showFolderBrowser = true
-            }
             videosVM.showSearchBar.value && (!videosVM.searchActive.value || videosVM.queryText.value.isEmpty()) -> {
                 videosVM.exitSearchMode(); videosVM.showLoading.value = true
                 scope.launch(Dispatchers.Default) { videosVM.loadAsync(tagsVM) }
+            }
+            !showFolderBrowser && videosVM.bucketId.value.isNotEmpty() -> {
+                videosVM.bucketId.value = ""
+                showFolderBrowser = true
             }
         }
     }
