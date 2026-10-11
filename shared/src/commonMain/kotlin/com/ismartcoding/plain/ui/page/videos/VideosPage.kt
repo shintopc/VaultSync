@@ -127,7 +127,7 @@ fun VideosPage(
         }
     }
 
-    PBackHandler(enabled = previewerState.visible || dragSelectState.selectMode || castVM.castMode.value || videosVM.showSearchBar.value || (!showFolderBrowser && videosVM.bucketId.value.isNotEmpty())) {
+    PBackHandler(enabled = previewerState.visible || dragSelectState.selectMode || castVM.castMode.value || videosVM.showSearchBar.value || (!showFolderBrowser && videosVM.bucketId.value.isNotEmpty()) || (showFolderBrowser && (videosVM.bucketId.value.isNotEmpty() || videosVM.trash.value || videosVM.tag.value != null))) {
         when {
             previewerState.visible -> scope.launch { previewerState.closeTransform() }
             dragSelectState.selectMode -> dragSelectState.exitSelectMode()
@@ -136,9 +136,12 @@ fun VideosPage(
                 videosVM.exitSearchMode(); videosVM.showLoading.value = true
                 scope.launch(Dispatchers.Default) { videosVM.loadAsync(tagsVM) }
             }
-            !showFolderBrowser && videosVM.bucketId.value.isNotEmpty() -> {
+            (!showFolderBrowser && videosVM.bucketId.value.isNotEmpty()) || (showFolderBrowser && (videosVM.bucketId.value.isNotEmpty() || videosVM.trash.value || videosVM.tag.value != null)) -> {
                 videosVM.bucketId.value = ""
+                videosVM.trash.value = false
+                videosVM.tag.value = null
                 showFolderBrowser = true
+                scope.launch(Dispatchers.Default) { videosVM.loadAsync(tagsVM) }
             }
         }
     }
@@ -230,7 +233,7 @@ fun VideosPage(
 
             PullToRefresh(refreshLayoutState = topRefreshLayoutState) {
                 AnimatedVisibility(visible = true, enter = fadeIn(), exit = fadeOut()) {
-                    if (showFolderBrowser) {
+                    if (showFolderBrowser && videosVM.bucketId.value.isEmpty() && !videosVM.trash.value && videosVM.tag.value == null && !videosVM.showSearchBar.value) {
                         if (foldersState.isNotEmpty() || mediaFoldersVM.totalBucket.value != null) {
                             MediaFolderGridContent(
                                 gridState = folderGridState,
