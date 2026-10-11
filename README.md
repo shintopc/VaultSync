@@ -1,4 +1,10 @@
-# PlainApp
+# VaultSync
+
+**VaultSync is an Android-only development fork** of [PlainApp](https://github.com/plainhub/plain-app). iOS app targets, Swift/Xcode project files, iOS-specific Kotlin source sets, iOS tests, and the iOS TestFlight workflow have been removed. The project aims to add a separate encrypted private media vault while preserving the existing PC browser dashboard and ordinary file-management behavior. The vault is under development; do not rely on it for irreplaceable data until security tests and browser-access integration are complete.
+
+> The upstream project overview below is retained for feature context and attribution. VaultSync-specific vault functionality is not yet complete.
+
+## Upstream project: PlainApp
 
 **PlainApp** is a free, open-source Android app that turns your phone into a self-hosted management hub you can access from any web browser on the same network — no accounts, no cloud, no subscriptions. Whether you need to transfer files, read SMS, browse photos, or mirror your screen, PlainApp puts full control back in your hands.
 

@@ -7,12 +7,6 @@ plugins {
     kotlin("plugin.parcelize")
 }
 
-// Dev-only single-target mode: pass -PenableDeviceTarget=false to skip
-// configuring iosArm64 (dependency resolution, KSP, task graph) when only
-// building for the simulator. Saves ~3-5s of configuration overhead per
-// build. Restore by omitting the flag (default: both targets enabled).
-val enableDeviceTarget = (findProperty("enableDeviceTarget") as? String)?.toBoolean() ?: true
-
 kotlin {
     jvmToolchain(17)
 
@@ -36,51 +30,6 @@ kotlin {
         // plugin silently ignores both source sets and `:shared:commonTest`
         // emits a warning on every build.
         withHostTest {}
-    }
-
-    // Dev-only single-target mode: see enableDeviceTarget above.
-    val iosTargets = mutableListOf<org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget>()
-    if (enableDeviceTarget) iosTargets.add(iosArm64())
-    iosTargets.add(iosSimulatorArm64())
-    // Skip DWARF debug-info generation: measured ~50% faster incremental iOS
-    // dev cycles (2m17s -> 1m10s for a single-line change; the K/N backend
-    // emits debug info at link time). Trade-off: no source-level Kotlin
-    // debugging in lldb and no line numbers in debug-build crash traces.
-    // Restore with -PkotlinDebuggable=true when you need to debug Kotlin.
-    val kotlinDebuggable = (findProperty("kotlinDebuggable") as? String)?.toBoolean() ?: false
-    iosTargets.forEach { iosTarget ->
-        val rustTarget = if (iosTarget.name == "iosArm64") "aarch64-apple-ios" else "aarch64-apple-ios-sim"
-        val rustTargetDir = layout.buildDirectory.dir("rust-target")
-        val onnxRuntimeDir = layout.buildDirectory.dir("onnxruntime/$rustTarget")
-        val installRustTarget = tasks.register<Exec>("installPlainRustTarget${iosTarget.name.replaceFirstChar { it.uppercase() }}") {
-            commandLine("rustup", "target", "add", rustTarget)
-        }
-        val buildPlainRust = tasks.register<Exec>("buildPlainRust${iosTarget.name.replaceFirstChar { it.uppercase() }}") {
-            dependsOn(installRustTarget)
-            inputs.file(rootProject.file("plain-rs/Cargo.toml"))
-            inputs.file(rootProject.file("plain-rs/Cargo.lock"))
-            inputs.dir(rootProject.file("plain-rs/src"))
-            outputs.file(rustTargetDir.map { it.file("$rustTarget/release/libplain_rust.a") })
-            environment("CARGO_TARGET_DIR", rustTargetDir.get().asFile.absolutePath)
-            environment("PLAIN_ONNX_RUNTIME_DIR", onnxRuntimeDir.get().asFile.absolutePath)
-            commandLine("cargo", "build", "--locked", "--manifest-path", rootProject.file("plain-rs/Cargo.toml"), "--release", "--target", rustTarget)
-        }
-        iosTarget.compilations.getByName("main").cinterops.create("plainPrefs") {
-            defFile(rootProject.file("shared/src/nativeInterop/cinterop/plainPrefs.def"))
-            compilerOpts("-I${rootProject.file("plain-rs/include").absolutePath}")
-        }
-        tasks.matching { it.name == "cinteropPlainPrefs${iosTarget.name.replaceFirstChar { c -> c.uppercase() }}" }.configureEach {
-            inputs.file(rootProject.file("plain-rs/include/plain_rust.h"))
-        }
-        iosTarget.binaries.framework {
-            baseName = "PlainShared"
-            isStatic = true
-            debuggable = kotlinDebuggable
-            linkerOpts("-L${rustTargetDir.get().asFile.absolutePath}/$rustTarget/release", "-lplain_rust", "-L${onnxRuntimeDir.get().asFile.absolutePath}", "-lonnxruntime", "-lc++", "-framework", "Foundation", "-framework", "CoreML", "-framework", "Accelerate")
-        }
-        tasks.matching { it.name.startsWith("link") && it.name.contains(iosTarget.name.replaceFirstChar { c -> c.uppercase() }) }.configureEach {
-            dependsOn(buildPlainRust)
-        }
     }
 
     sourceSets {
@@ -162,10 +111,6 @@ kotlin {
             implementation(libs.androidx.transition)
 
 
-        }
-        iosMain.dependencies {
-            implementation(libs.coil)
-            implementation(libs.coil.network.core)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

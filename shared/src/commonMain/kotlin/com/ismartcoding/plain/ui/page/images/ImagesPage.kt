@@ -19,8 +19,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
@@ -58,6 +60,7 @@ import com.ismartcoding.plain.ui.base.rememberBoostFlingBehavior
 import com.ismartcoding.plain.ui.components.ImageGridItem
 import com.ismartcoding.plain.ui.components.MediaDateGroupHeader
 import com.ismartcoding.plain.ui.components.MediaFilesSelectModeBottomActions
+import com.ismartcoding.plain.ui.page.media.MediaFolderGridContent
 import com.ismartcoding.plain.ui.components.MediaTopBar
 import com.ismartcoding.plain.ui.components.mediaviewer.previewer.rememberPreviewerState
 import com.ismartcoding.plain.ui.extensions.collectAsStateValue
@@ -92,6 +95,9 @@ fun ImagesPage(
     val tagsState by tagsVM.itemsFlow.collectAsState()
     val hapticFeedback = LocalHapticFeedback.current
     val itemsState by imagesVM.itemsFlow.collectAsState()
+    val foldersState by mediaFoldersVM.itemsFlow.collectAsState()
+    var showFolderBrowser by remember { mutableStateOf(true) }
+    val folderGridState = rememberLazyGridState()
     val scrollState = rememberLazyGridState()
     imagesVM.scrollStateMap[0] = scrollState
     val dragSelectState = rememberDragSelectState({ scrollState })
@@ -117,7 +123,7 @@ fun ImagesPage(
         }
     }
 
-    PBackHandler(enabled = previewerState.visible || dragSelectState.selectMode || castVM.castMode.value || imagesVM.showSearchBar.value) {
+    PBackHandler(enabled = previewerState.visible || dragSelectState.selectMode || castVM.castMode.value || imagesVM.showSearchBar.value || (!showFolderBrowser && imagesVM.bucketId.value.isNotEmpty()) || (showFolderBrowser && (imagesVM.bucketId.value.isNotEmpty() || imagesVM.trash.value || imagesVM.tag.value != null))) {
         when {
             previewerState.visible -> scope.launch { previewerState.closeTransform() }
             dragSelectState.selectMode -> dragSelectState.exitSelectMode()
@@ -128,6 +134,13 @@ fun ImagesPage(
                 scope.launch {
                     imagesVM.loadAsync(tagsVM)
                 }
+            }
+            (!showFolderBrowser && imagesVM.bucketId.value.isNotEmpty()) || (showFolderBrowser && (imagesVM.bucketId.value.isNotEmpty() || imagesVM.trash.value || imagesVM.tag.value != null)) -> {
+                imagesVM.bucketId.value = ""
+                imagesVM.trash.value = false
+                imagesVM.tag.value = null
+                showFolderBrowser = true
+                scope.launch(Dispatchers.Default) { imagesVM.loadAsync(tagsVM) }
             }
         }
     }
@@ -234,7 +247,23 @@ fun ImagesPage(
 
             PullToRefresh(refreshLayoutState = topRefreshLayoutState) {
                 AnimatedVisibility(visible = true, enter = fadeIn(), exit = fadeOut()) {
-                    if (itemsState.isNotEmpty()) {
+                    if (showFolderBrowser && imagesVM.bucketId.value.isEmpty() && !imagesVM.trash.value && imagesVM.tag.value == null && !imagesVM.showSearchBar.value) {
+                        if (foldersState.isNotEmpty() || mediaFoldersVM.totalBucket.value != null) {
+                            MediaFolderGridContent(
+                                gridState = folderGridState,
+                                totalBucket = mediaFoldersVM.totalBucket.value,
+                                items = foldersState,
+                                selectedBucketId = imagesVM.bucketId.value,
+                                onSelect = { selectedId ->
+                                    imagesVM.bucketId.value = selectedId
+                                    showFolderBrowser = false
+                                    scope.launch(Dispatchers.Default) { imagesVM.loadAsync(tagsVM) }
+                                },
+                            )
+                        } else {
+                            NoDataColumn(loading = mediaFoldersVM.showLoading.value, search = false)
+                        }
+                    } else if (itemsState.isNotEmpty()) {
                         val flingBehavior = rememberBoostFlingBehavior(cellsPerRow.value / 3f)
                         LazyVerticalGridScrollbar(state = scrollState) {
                             LazyVerticalGrid(

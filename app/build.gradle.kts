@@ -25,7 +25,7 @@ rootProject.file("keystore.properties").let {
 android {
     compileSdk = 37
     defaultConfig {
-        applicationId = "com.ismartcoding.plain"
+        applicationId = "com.shintopc.vaultsync"
         minSdk = 28
         targetSdk = 36
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -185,8 +185,10 @@ val libcxxTarget = if (rustAbi == "armeabi-v7a") "arm-linux-androideabi" else ru
 // often lacks ~/.cargo/bin, and the daemon cannot fix that after startup. Call
 // rustup/cargo by absolute path so Exec can start them.
 val cargoBinDir = File(System.getenv("CARGO_HOME") ?: "${System.getProperty("user.home")}/.cargo", "bin")
-val rustupExe = cargoBinDir.resolve("rustup")
-val cargoExe = cargoBinDir.resolve("cargo")
+// Windows Rust tools are named rustup.exe/cargo.exe; Unix tools have no extension.
+val rustExecutableSuffix = if (System.getProperty("os.name").startsWith("Windows", ignoreCase = true)) ".exe" else ""
+val rustupExe = cargoBinDir.resolve("rustup$rustExecutableSuffix")
+val cargoExe = cargoBinDir.resolve("cargo$rustExecutableSuffix")
 listOf(rustupExe, cargoExe).forEach {
     require(it.canExecute()) { "Rust tool not found or not executable: ${it.absolutePath}" }
 }

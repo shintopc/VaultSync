@@ -1,7 +1,7 @@
 plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
-rootProject.name = "PlainApp"
+rootProject.name = "VaultSync"
 include(":app")
 include(":shared")
 include(":shared-lib")

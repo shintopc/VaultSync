@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,6 +37,7 @@ import com.ismartcoding.plain.platform.audioIsPlayingFlow
 import com.ismartcoding.plain.platform.audioJustPlayWithNotificationCheck
 import com.ismartcoding.plain.ui.base.AnimatedBottomAction
 import com.ismartcoding.plain.ui.components.MediaTopBar
+import com.ismartcoding.plain.ui.page.media.MediaFolderListContent
 import com.ismartcoding.plain.ui.base.NeedPermissionColumn
 import com.ismartcoding.plain.ui.base.PSheetActionRow
 import com.ismartcoding.plain.ui.base.VerticalSpace
@@ -101,6 +103,10 @@ fun AudioHomePage(
     val tagsMapState = audioState.tagsMapState
     val isAudioPlaying by audioIsPlayingFlow().collectAsState()
     var showCreatePlaylist by remember { mutableStateOf(false) }
+    val foldersState by mediaFoldersVM.itemsFlow.collectAsState()
+    var showFolderBrowser by remember { mutableStateOf(true) }
+    var showAudioList by remember { mutableStateOf(false) }
+    val folderListState = rememberLazyListState()
 
     // Floating player bar covers list content; measure it and pad the lists.
     val density = LocalDensity.current
@@ -116,13 +122,21 @@ fun AudioHomePage(
         }
     }
 
-    PBackHandler(enabled = dragSelectState.selectMode || castVM.castMode.value || audioVM.showSearchBar.value) {
+    PBackHandler(enabled = dragSelectState.selectMode || castVM.castMode.value || audioVM.showSearchBar.value || !showFolderBrowser || (showFolderBrowser && (audioVM.bucketId.value.isNotEmpty() || audioVM.trash.value || audioVM.tag.value != null))) {
         when {
             dragSelectState.selectMode -> dragSelectState.exitSelectMode()
             castVM.castMode.value -> castVM.exitCastMode()
             audioVM.showSearchBar.value && (!audioVM.searchActive.value || audioVM.queryText.value.isEmpty()) -> {
                 audioVM.exitSearchMode()
                 audioVM.showLoading.value = true
+                scope.launch(Dispatchers.Default) { audioVM.loadAsync(tagsVM) }
+            }
+            !showFolderBrowser || (audioVM.bucketId.value.isNotEmpty() || audioVM.trash.value || audioVM.tag.value != null) -> {
+                audioVM.bucketId.value = ""
+                audioVM.trash.value = false
+                audioVM.tag.value = null
+                showFolderBrowser = true
+                showAudioList = false
                 scope.launch(Dispatchers.Default) { audioVM.loadAsync(tagsVM) }
             }
         }
@@ -200,7 +214,20 @@ fun AudioHomePage(
                     NeedPermissionColumn(UiRes.drawable.ui_drawable_music, AppFeatureType.FILES.getPermission()!!); return@Column
                 }
 
-                if (audioVM.showSearchBar.value || sidebarFilterActive) {
+                if (showFolderBrowser && !audioVM.showSearchBar.value && !sidebarFilterActive) {
+                    MediaFolderListContent(
+                        listState = folderListState,
+                        totalBucket = mediaFoldersVM.totalBucket.value,
+                        items = foldersState,
+                        selectedBucketId = audioVM.bucketId.value,
+                        onSelect = { selectedId ->
+                            audioVM.bucketId.value = selectedId
+                            showFolderBrowser = false
+                            showAudioList = true
+                            scope.launch(Dispatchers.Default) { audioVM.loadAsync(tagsVM) }
+                        },
+                    )
+                } else if (audioVM.showSearchBar.value || sidebarFilterActive || showAudioList) {
                     // Search and filtered views mirror the all-items page;
                     // AudioPageList brings its own pull-to-refresh, so it sits
                     // outside ours.

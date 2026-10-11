@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Strings referenced from AndroidManifest.xml — must remain as Android resources -->
 <resources>
-    <string name="app_name" translatable="false">PlainApp</string>
+    <string name="app_name" translatable="false">VaultSync</string>
     <string name="clipboard_sync_tile" translatable="false">Clipboard</string>
-    <string name="accessibility_service_label">PlainApp Remote Control</string>
-    <string name="accessibility_service_description">PlainApp uses this accessibility service to enable remote control during screen mirroring. It injects touch events (tap, swipe, scroll) and navigation actions (Back, Home, Recents) sent from the web interface.</string>
+    <string name="accessibility_service_label">VaultSync Remote Control</string>
+    <string name="accessibility_service_description">VaultSync uses this accessibility service to enable remote control during screen mirroring. It injects touch events (tap, swipe, scroll) and navigation actions (Back, Home, Recents) sent from the web interface.</string>
     <string name="shortcut_notes">Notes</string>
     <string name="shortcut_docs">Docs</string>
     <string name="shortcut_feeds">Feeds</string>
