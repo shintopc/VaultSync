@@ -123,7 +123,7 @@ fun ImagesPage(
         }
     }
 
-    PBackHandler(enabled = previewerState.visible || dragSelectState.selectMode || castVM.castMode.value || imagesVM.showSearchBar.value || (!showFolderBrowser && imagesVM.bucketId.value.isNotEmpty())) {
+    PBackHandler(enabled = previewerState.visible || dragSelectState.selectMode || castVM.castMode.value || imagesVM.showSearchBar.value || (!showFolderBrowser && imagesVM.bucketId.value.isNotEmpty()) || (showFolderBrowser && (imagesVM.bucketId.value.isNotEmpty() || imagesVM.trash.value || imagesVM.tag.value != null))) {
         when {
             previewerState.visible -> scope.launch { previewerState.closeTransform() }
             dragSelectState.selectMode -> dragSelectState.exitSelectMode()
@@ -135,9 +135,12 @@ fun ImagesPage(
                     imagesVM.loadAsync(tagsVM)
                 }
             }
-            !showFolderBrowser && imagesVM.bucketId.value.isNotEmpty() -> {
+            (!showFolderBrowser && imagesVM.bucketId.value.isNotEmpty()) || (showFolderBrowser && (imagesVM.bucketId.value.isNotEmpty() || imagesVM.trash.value || imagesVM.tag.value != null)) -> {
                 imagesVM.bucketId.value = ""
+                imagesVM.trash.value = false
+                imagesVM.tag.value = null
                 showFolderBrowser = true
+                scope.launch(Dispatchers.Default) { imagesVM.loadAsync(tagsVM) }
             }
         }
     }
@@ -244,7 +247,7 @@ fun ImagesPage(
 
             PullToRefresh(refreshLayoutState = topRefreshLayoutState) {
                 AnimatedVisibility(visible = true, enter = fadeIn(), exit = fadeOut()) {
-                    if (showFolderBrowser) {
+                    if (showFolderBrowser && imagesVM.bucketId.value.isEmpty() && !imagesVM.trash.value && imagesVM.tag.value == null && !imagesVM.showSearchBar.value) {
                         if (foldersState.isNotEmpty() || mediaFoldersVM.totalBucket.value != null) {
                             MediaFolderGridContent(
                                 gridState = folderGridState,
