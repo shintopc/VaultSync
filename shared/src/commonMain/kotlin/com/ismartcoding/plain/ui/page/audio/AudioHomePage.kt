@@ -122,7 +122,7 @@ fun AudioHomePage(
         }
     }
 
-    PBackHandler(enabled = dragSelectState.selectMode || castVM.castMode.value || audioVM.showSearchBar.value || !showFolderBrowser) {
+    PBackHandler(enabled = dragSelectState.selectMode || castVM.castMode.value || audioVM.showSearchBar.value || !showFolderBrowser || (showFolderBrowser && (audioVM.bucketId.value.isNotEmpty() || audioVM.trash.value || audioVM.tag.value != null))) {
         when {
             dragSelectState.selectMode -> dragSelectState.exitSelectMode()
             castVM.castMode.value -> castVM.exitCastMode()
@@ -131,8 +131,10 @@ fun AudioHomePage(
                 audioVM.showLoading.value = true
                 scope.launch(Dispatchers.Default) { audioVM.loadAsync(tagsVM) }
             }
-            !showFolderBrowser -> {
+            !showFolderBrowser || (audioVM.bucketId.value.isNotEmpty() || audioVM.trash.value || audioVM.tag.value != null) -> {
                 audioVM.bucketId.value = ""
+                audioVM.trash.value = false
+                audioVM.tag.value = null
                 showFolderBrowser = true
                 showAudioList = false
                 scope.launch(Dispatchers.Default) { audioVM.loadAsync(tagsVM) }
@@ -212,7 +214,7 @@ fun AudioHomePage(
                     NeedPermissionColumn(UiRes.drawable.ui_drawable_music, AppFeatureType.FILES.getPermission()!!); return@Column
                 }
 
-                if (showFolderBrowser) {
+                if (showFolderBrowser && !audioVM.showSearchBar.value && !sidebarFilterActive) {
                     MediaFolderListContent(
                         listState = folderListState,
                         totalBucket = mediaFoldersVM.totalBucket.value,
