@@ -1,5 +1,0 @@
-language = Objective-C
-package = platform.CoreMedia
-modules = CoreMedia
-compilerOpts = -framework CoreMedia
-linkerOpts = -framework CoreMedia
