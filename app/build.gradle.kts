@@ -25,7 +25,7 @@ rootProject.file("keystore.properties").let {
 android {
     compileSdk = 37
     defaultConfig {
-        applicationId = "com.ismartcoding.plain"
+        applicationId = "com.shintopc.vaultsync"
         minSdk = 28
         targetSdk = 36
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
