@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">VaultSync</string>
+    <string name="app_name_calculator">Calculator</string>
+    <string name="app_name_notes">Notes</string>
+</resources>

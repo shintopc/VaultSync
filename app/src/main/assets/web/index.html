@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VaultSync — PC Access</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <!-- Disconnection Warning Banner -->
+        <div id="connectionBanner" class="connection-banner hidden">
+            <span>⚠️ Connection to phone lost. Reconnecting...</span>
+        </div>
+
+        <!-- App Header -->
+        <header class="app-header">
+            <div class="header-left">
+                <div class="logo">
+                    <span class="logo-icon">🛡️</span>
+                    <span class="logo-text">VaultSync <span>PC</span></span>
+                </div>
+                <div class="server-pill" id="serverPill">
+                    <span class="status-dot"></span>
+                    <span id="serverUrlText">Connected</span>
+                </div>
+            </div>
+
+            <nav class="nav-tabs" id="navTabs">
+                <button class="nav-tab active" id="tabMedia" data-target="media">
+                    <span class="tab-icon">📷</span> Normal Media
+                </button>
+                <button class="nav-tab" id="tabVault" data-target="vault">
+                    <span class="tab-icon">🔒</span> Encrypted Vault
+                    <span class="vault-badge locked" id="vaultStatusBadge">Locked</span>
+                </button>
+            </nav>
+
+            <div class="header-right">
+                <button id="lockVaultBtn" class="btn btn-outline btn-sm hidden" title="Lock Encrypted Vault">
+                    <span>🔒</span> Lock Vault
+                </button>
+                <button id="logoutBtn" class="btn btn-outline btn-sm hidden">
+                    <span>🚪</span> Sign Out
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="main-container">
+            <!-- 1. LOGIN SCREEN -->
+            <section id="loginView" class="view-panel active">
+                <div class="login-card">
+                    <div class="login-icon">💻 ↔️ 📱</div>
+                    <h2>Connect to Phone</h2>
+                    <p class="login-desc">Enter the 6-digit pairing passcode displayed on the PC Access screen of your VaultSync app.</p>
+
+                    <div id="loginError" class="alert alert-error hidden"></div>
+
+                    <form id="loginForm" class="login-form">
+                        <div class="passcode-input-group">
+                            <input type="text" id="passcodeInput" maxlength="6" inputmode="numeric" placeholder="••••••" autocomplete="off" autofocus required>
+                        </div>
+                        <button type="submit" id="loginSubmitBtn" class="btn btn-primary btn-block">
+                            Connect to Phone
+                        </button>
+                    </form>
+
+                    <div class="security-features">
+                        <div class="feature-item"><span>🛡️</span> Private LAN only (No internet exposure)</div>
+                        <div class="feature-item"><span>⏱️</span> 30-min auto-expiring session</div>
+                        <div class="feature-item"><span>🔒</span> Vault access requires Master PIN</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. EXPLORER SCREEN (Shared for Media & Vault) -->
+            <section id="explorerView" class="view-panel hidden">
+                <!-- Explorer Toolbar -->
+                <div class="explorer-toolbar">
+                    <div class="breadcrumbs-container" id="breadcrumbs">
+                        <!-- Populated by JS -->
+                    </div>
+
+                    <div class="toolbar-controls">
+                        <div class="search-box">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="searchInput" placeholder="Search files...">
+                            <button id="clearSearchBtn" class="clear-search hidden">✕</button>
+                        </div>
+
+                        <div class="sort-selector">
+                            <span class="sort-icon">⇅</span>
+                            <select id="sortSelect">
+                                <option value="name_asc">Name (A to Z)</option>
+                                <option value="name_desc">Name (Z to A)</option>
+                                <option value="date_desc" selected>Date (Newest)</option>
+                                <option value="date_asc">Date (Oldest)</option>
+                                <option value="size_desc">Size (Largest)</option>
+                                <option value="size_asc">Size (Smallest)</option>
+                            </select>
+                        </div>
+
+                        <div class="view-toggle">
+                            <button id="gridToggleBtn" class="toggle-btn active" title="Grid View">⊞</button>
+                            <button id="listToggleBtn" class="toggle-btn" title="List View">☰</button>
+                        </div>
+
+                        <div class="toolbar-actions">
+                            <button id="uploadBtn" class="btn btn-primary btn-sm" title="Upload files to phone">
+                                <span>⬆️</span> Upload
+                            </button>
+                            <input type="file" id="fileUploadInput" multiple style="display:none">
+                            <button id="newFolderBtn" class="btn btn-outline btn-sm hidden" title="Create New Vault Folder">
+                                <span>📁+</span> New Folder
+                            </button>
+                            <button id="selectAllBtn" class="btn btn-outline btn-sm" title="Select All Files">
+                                <span>☑️</span> Select All
+                            </button>
+                            <button id="downloadZipBtn" class="btn btn-outline btn-sm hidden" title="Download selected files as ZIP">
+                                <span>📦</span> Download ZIP (<span id="selectedCountBadge">0</span>)
+                            </button>
+                            <button id="deleteSelectedBtn" class="btn btn-outline btn-sm btn-danger hidden" title="Delete selected files">
+                                <span>🗑️</span> Delete (<span id="deleteCountBadge">0</span>)
+                            </button>
+                        </div>
+
+                        <button id="refreshBtn" class="btn btn-icon" title="Refresh">🔄</button>
+                    </div>
+                </div>
+
+                <!-- Category Filters -->
+                <div class="category-filters" id="categoryFilters">
+                    <button class="filter-pill active" data-category="ALL">All Files</button>
+                    <button class="filter-pill" data-category="Images">Images</button>
+                    <button class="filter-pill" data-category="Videos">Videos</button>
+                    <button class="filter-pill" data-category="Audio">Audio</button>
+                    <button class="filter-pill" data-category="Documents">Documents</button>
+                </div>
+
+                <!-- Content Container -->
+                <div class="content-container">
+                    <!-- Folders Section (Only in Vault mode) -->
+                    <div id="foldersSection" class="folders-section hidden">
+                        <h3 class="section-title">Folders</h3>
+                        <div id="foldersGrid" class="folders-grid"></div>
+                    </div>
+
+                    <!-- Files Section -->
+                    <div class="files-section">
+                        <h3 class="section-title" id="filesSectionTitle">Files</h3>
+                        <div id="itemsContainer" class="items-grid">
+                            <!-- Items populated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Empty State -->
+                    <div id="emptyState" class="empty-state hidden">
+                        <div class="empty-icon">📂</div>
+                        <h3>No Files Found</h3>
+                        <p id="emptyStateMsg">There are no media files in this view.</p>
+                    </div>
+
+                    <!-- Loading State -->
+                    <div id="loadingState" class="loading-state hidden">
+                        <div class="spinner"></div>
+                        <p>Loading files from phone...</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- 3. VAULT UNLOCK MODAL -->
+        <div id="vaultUnlockModal" class="modal-backdrop hidden">
+            <div class="modal-card">
+                <div class="modal-icon">🔐</div>
+                <h3>Unlock Encrypted Vault</h3>
+                <p id="vaultUnlockDesc">Enter your Vault Master PIN or Password to access protected folders and stream private videos.</p>
+                <div id="vaultUnlockError" class="alert alert-error hidden"></div>
+                <form id="vaultUnlockForm">
+                    <input type="password" id="vaultPinInput" placeholder="Master PIN / Password" autocomplete="off" required>
+                    <div class="modal-actions">
+                        <button type="button" id="vaultUnlockCancelBtn" class="btn btn-outline">Cancel</button>
+                        <button type="submit" id="vaultUnlockSubmitBtn" class="btn btn-primary">Unlock Vault</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 4. NEW FOLDER MODAL -->
+        <div id="newFolderModal" class="modal-backdrop hidden">
+            <div class="modal-card">
+                <div class="modal-icon">📁</div>
+                <h3>Create New Vault Folder</h3>
+                <p>Organize your encrypted media into isolated private directories.</p>
+                <form id="newFolderForm">
+                    <input type="text" id="newFolderNameInput" placeholder="Folder name" autocomplete="off" required>
+                    <div class="modal-actions">
+                        <button type="button" id="newFolderCancelBtn" class="btn btn-outline">Cancel</button>
+                        <button type="submit" id="newFolderSubmitBtn" class="btn btn-primary">Create Folder</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 5. DELETE CONFIRMATION MODAL -->
+        <div id="confirmDeleteModal" class="modal-backdrop hidden">
+            <div class="modal-card">
+                <div class="modal-icon">⚠️</div>
+                <h3>Confirm Deletion</h3>
+                <p id="confirmDeleteMsg">Are you sure you want to permanently delete the selected item(s)? This action cannot be undone.</p>
+                <div class="modal-actions">
+                    <button type="button" id="confirmDeleteCancelBtn" class="btn btn-outline">Cancel</button>
+                    <button type="button" id="confirmDeleteSubmitBtn" class="btn btn-danger">Delete Permanently</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. UPLOAD PROGRESS CARD -->
+        <div id="uploadProgressCard" class="upload-progress-card hidden">
+            <div class="upload-header">
+                <span id="uploadStatusText">Uploading files...</span>
+                <span id="uploadPercent">0%</span>
+            </div>
+            <div class="upload-bar-track">
+                <div id="uploadProgressBar" class="upload-bar-fill" style="width: 0%;"></div>
+            </div>
+            <div class="upload-footer">
+                <span id="uploadFileName">filename.ext</span>
+            </div>
+        </div>
+
+        <!-- 7. DRAG AND DROP OVERLAY -->
+        <div id="dragDropOverlay" class="drag-drop-overlay hidden">
+            <div class="drag-drop-box">
+                <div class="drag-icon">📥</div>
+                <h3>Drop files to upload</h3>
+                <p id="dragDropDestination">Uploading to VaultSync</p>
+            </div>
+        </div>
+
+        <!-- 8. TOAST NOTIFICATIONS -->
+        <div id="toastContainer" class="toast-container"></div>
+
+        <!-- 9. MEDIA PREVIEW MODAL -->
+        <div id="previewModal" class="preview-backdrop hidden">
+            <div class="preview-header">
+                <div class="preview-info">
+                    <span id="previewTitle" class="preview-title">Filename.ext</span>
+                    <span id="previewMeta" class="preview-meta">Category • Size</span>
+                </div>
+                <div class="preview-actions">
+                    <a id="previewDownloadBtn" class="btn btn-sm btn-outline" download>⬇️ Download</a>
+                    <button id="previewCloseBtn" class="btn btn-icon btn-close">✕</button>
+                </div>
+            </div>
+
+            <div class="preview-body" id="previewBody">
+                <!-- Dynamically injected preview element -->
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

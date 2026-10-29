@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Notepad Base -->
+    <path
+        android:fillColor="#546E7A"
+        android:pathData="M30,22h48a6,6 0,0 1,6 6v52a6,6 0,0 1,-6 6H30a6,6 0,0 1,-6 -6V28a6,6 0,0 1,6 -6z" />
+    <!-- Paper Sheet -->
+    <path
+        android:fillColor="#ECEFF1"
+        android:pathData="M34,26h40a4,4 0,0 1,4 4v46a4,4 0,0 1,-4 4H34a4,4 0,0 1,-4 -4V30a4,4 0,0 1,4 -4z" />
+    <!-- Notepad Header Binding Strip -->
+    <path
+        android:fillColor="#37474F"
+        android:pathData="M30,22h48v8H30z" />
+    <!-- Note Lines -->
+    <path
+        android:fillColor="#90A4AE"
+        android:pathData="M38,38h32v2h-32zM38,46h32v2h-32zM38,54h24v2h-24zM38,62h28v2h-28z" />
+    <!-- Checkmark / Pencil Accent -->
+    <path
+        android:fillColor="#26A69A"
+        android:pathData="M66,60l4,4 8,-8 2,2 -10,10 -6,-6z" />
+</vector>
