@@ -8,3 +8,10 @@ local.properties
 captures/
 *.apk
 *.aab
+
+# Signing & Keystore Credentials
+*.jks
+*.keystore
+*.p12
+keystore/
+keystore.properties
