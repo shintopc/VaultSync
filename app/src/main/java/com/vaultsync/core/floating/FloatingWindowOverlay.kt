@@ -5,6 +5,8 @@ import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -31,6 +33,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -463,6 +467,11 @@ private fun FloatingVideoContent(
     var isPlaying by remember { mutableStateOf(true) }
     var showControls by remember { mutableStateOf(false) }
 
+    // Brightness States
+    var brightness by remember { mutableFloatStateOf(1.0f) }
+    var showBrightnessSlider by remember { mutableStateOf(false) }
+    var showBrightnessBadge by remember { mutableStateOf(false) }
+
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
 
@@ -516,11 +525,18 @@ private fun FloatingVideoContent(
         }
     }
 
-    // Auto-hide controls after 3 seconds of inactivity
-    LaunchedEffect(showControls) {
-        if (showControls) {
+    // Auto-hide controls after 3 seconds of inactivity (pause auto-hide while adjusting brightness slider)
+    LaunchedEffect(showControls, showBrightnessSlider) {
+        if (showControls && !showBrightnessSlider) {
             delay(3000)
             showControls = false
+        }
+    }
+
+    LaunchedEffect(showBrightnessBadge) {
+        if (showBrightnessBadge) {
+            delay(1200)
+            showBrightnessBadge = false
         }
     }
 
@@ -565,6 +581,16 @@ private fun FloatingVideoContent(
                 }
             },
         )
+
+        // Brightness dimming scrim
+        val dimAlpha = ((1f - brightness) * 0.85f).coerceIn(0f, 0.85f)
+        if (dimAlpha > 0.01f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = dimAlpha))
+            )
+        }
 
         // Gesture handling layer for pinch-to-zoom, pan, double-tap zoom, and single-tap to toggle controls
         Box(
@@ -616,7 +642,79 @@ private fun FloatingVideoContent(
             }
         }
 
-        // Bottom Controls Row: Mute & Rotate (always accessible)
+        // Brightness Indicator Badge
+        AnimatedVisibility(
+            visible = showBrightnessBadge,
+            enter = fadeIn() + scaleIn(),
+            exit = fadeOut() + scaleOut(),
+            modifier = Modifier.align(Alignment.Center),
+        ) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.Black.copy(alpha = 0.85f))
+                    .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "☀️ ${(brightness * 100).toInt()}%",
+                    color = Color.White,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+
+        // Expandable Brightness Slider
+        AnimatedVisibility(
+            visible = showBrightnessSlider,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 44.dp, start = 8.dp, end = 8.dp)
+                .fillMaxWidth(),
+        ) {
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = Color.Black.copy(alpha = 0.88f),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)),
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("🌙", fontSize = 11.sp)
+                    Slider(
+                        value = brightness,
+                        onValueChange = { newVal ->
+                            brightness = newVal
+                            showBrightnessBadge = true
+                        },
+                        valueRange = 0.1f..1.0f,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 4.dp),
+                        colors = SliderDefaults.colors(
+                            thumbColor = MaterialTheme.colorScheme.primary,
+                            activeTrackColor = MaterialTheme.colorScheme.primary,
+                            inactiveTrackColor = Color.DarkGray,
+                        ),
+                    )
+                    Text("☀️", fontSize = 11.sp)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "${(brightness * 100).toInt()}%",
+                        color = Color.White,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+        }
+
+        // Bottom Controls Row: Mute, Rotate & Brightness (always accessible)
         Row(
             modifier = Modifier
                 .align(Alignment.BottomStart)
@@ -649,6 +747,24 @@ private fun FloatingVideoContent(
                 contentAlignment = Alignment.Center,
             ) {
                 RotateMediaIcon(modifier = Modifier.size(15.dp))
+            }
+
+            // Brightness Toggle Button
+            Box(
+                modifier = Modifier
+                    .size(30.dp)
+                    .clip(CircleShape)
+                    .background(if (showBrightnessSlider) MaterialTheme.colorScheme.primary else Color.Black.copy(alpha = 0.65f))
+                    .clickable {
+                        showBrightnessSlider = !showBrightnessSlider
+                        showControls = true
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "☀️",
+                    fontSize = 13.sp,
+                )
             }
         }
     }

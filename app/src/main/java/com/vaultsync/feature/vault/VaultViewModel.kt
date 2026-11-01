@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.provider.OpenableColumns
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.vaultsync.core.model.VaultCategory
@@ -173,11 +174,15 @@ class VaultViewModel(
         if (entry.category != VaultCategory.Images && entry.category != VaultCategory.Videos) return
 
         viewModelScope.launch(Dispatchers.IO) {
-            val thumb = session.withVmkSuspend { vmk ->
-                thumbnailManager.getOrCreateThumbnail(entry, vmk)
-            }
-            if (thumb != null) {
-                _thumbnailCache.update { it + (entry.id to thumb) }
+            try {
+                val thumb = session.withVmkSuspend { vmk ->
+                    thumbnailManager.getOrCreateThumbnail(entry, vmk)
+                }
+                if (thumb != null) {
+                    _thumbnailCache.update { it + (entry.id to thumb) }
+                }
+            } catch (e: Exception) {
+                Log.w("VaultViewModel", "Failed to load thumbnail for ${entry.id}: ${e.message}")
             }
         }
     }
@@ -196,8 +201,7 @@ class VaultViewModel(
     val audioEntries: StateFlow<List<VaultEntry>> =
         combine(repository.getAllEntries(), _uiState) { entries, state ->
             val audios = entries.filter {
-                it.category == VaultCategory.Audio &&
-                (state.currentFolderId == null || it.folderId == state.currentFolderId)
+                it.category == VaultCategory.Audio
             }
             val query = state.searchQuery.trim().lowercase()
             val filtered = if (query.isBlank()) audios else audios.filter { it.originalFileName.lowercase().contains(query) }
@@ -854,33 +858,56 @@ class VaultViewModel(
                         it.copy(importProgressText = "Encrypting file ${index + 1} of ${uris.size}...")
                     }
 
-                    var displayName = "file_${System.currentTimeMillis()}"
-                    var size = -1L
-                    val mimeType = contentResolver.getType(uri)
-
-                    contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-                        if (cursor.moveToFirst()) {
-                            val nameIdx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                            val sizeIdx = cursor.getColumnIndex(OpenableColumns.SIZE)
-                            if (nameIdx >= 0) displayName = cursor.getString(nameIdx) ?: displayName
-                            if (sizeIdx >= 0) size = cursor.getLong(sizeIdx)
-                        }
-                    }
-
                     try {
-                        contentResolver.openInputStream(uri)?.use { stream ->
-                            session.withVmkSuspend { vmk ->
-                                repository.importStream(
-                                    inputStream = stream,
-                                    displayName = displayName,
-                                    originalSize = if (size > 0) size else -1L,
-                                    mimeType = mimeType,
-                                    destinationFolderId = _uiState.value.currentFolderId,
-                                    vmk = vmk,
-                                )
-                            }
+                        var displayName = "file_${System.currentTimeMillis()}"
+                        var size = -1L
+                        var mimeType: String? = null
+
+                        try {
+                            mimeType = contentResolver.getType(uri)
+                        } catch (e: Exception) {
+                            Log.w("VaultViewModel", "Failed to get MIME type for $uri", e)
                         }
-                        successCount++
+
+                        try {
+                            contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                                if (cursor.moveToFirst()) {
+                                    val nameIdx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                                    val sizeIdx = cursor.getColumnIndex(OpenableColumns.SIZE)
+                                    if (nameIdx >= 0) displayName = cursor.getString(nameIdx) ?: displayName
+                                    if (sizeIdx >= 0) size = cursor.getLong(sizeIdx)
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.w("VaultViewModel", "Failed to query metadata for $uri", e)
+                        }
+
+                        val category = VaultCategory.fromMimeOrExtension(mimeType, displayName)
+                        val targetFolderId = if (category == VaultCategory.Audio || _uiState.value.viewTab == VaultViewTab.AUDIO) {
+                            null
+                        } else {
+                            _uiState.value.currentFolderId?.takeIf { it != "__root__" }
+                        }
+
+                        val stream = contentResolver.openInputStream(uri)
+                        if (stream != null) {
+                            stream.use { s ->
+                                session.withVmkSuspend { vmk ->
+                                    repository.importStream(
+                                        inputStream = s,
+                                        displayName = displayName,
+                                        originalSize = if (size > 0) size else -1L,
+                                        mimeType = mimeType,
+                                        destinationFolderId = targetFolderId,
+                                        vmk = vmk,
+                                    )
+                                }
+                            }
+                            successCount++
+                        } else {
+                            failureCount++
+                            lastErrorMessage = "Cannot open stream for $displayName"
+                        }
                     } catch (e: Exception) {
                         e.printStackTrace()
                         failureCount++
@@ -934,19 +961,29 @@ class VaultViewModel(
                     }
 
                     try {
-                        contentResolver.openInputStream(uri)?.use { stream ->
-                            session.withVmkSuspend { vmk ->
-                                repository.importStream(
-                                    inputStream = stream,
-                                    displayName = item.displayName,
-                                    originalSize = if (item.sizeBytes >= 0) item.sizeBytes else 0L,
-                                    mimeType = item.mimeType,
-                                    destinationFolderId = _uiState.value.currentFolderId,
-                                    vmk = vmk,
-                                )
+                        val isAudio = item.category == com.vaultsync.core.media.MediaCategory.Audio ||
+                            _uiState.value.viewTab == VaultViewTab.AUDIO
+                        val targetFolderId = if (isAudio) null else _uiState.value.currentFolderId?.takeIf { it != "__root__" }
+
+                        val stream = contentResolver.openInputStream(uri)
+                        if (stream != null) {
+                            stream.use { s ->
+                                session.withVmkSuspend { vmk ->
+                                    repository.importStream(
+                                        inputStream = s,
+                                        displayName = item.displayName,
+                                        originalSize = if (item.sizeBytes >= 0) item.sizeBytes else -1L,
+                                        mimeType = item.mimeType,
+                                        destinationFolderId = targetFolderId,
+                                        vmk = vmk,
+                                    )
+                                }
                             }
+                            successCount++
+                        } else {
+                            failureCount++
+                            lastErrorMessage = "Cannot open stream for ${item.displayName}"
                         }
-                        successCount++
                     } catch (e: Exception) {
                         e.printStackTrace()
                         failureCount++

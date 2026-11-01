@@ -509,13 +509,16 @@ class MediaViewModel(
                         }
                         try {
                             val uri = item.uri ?: return@forEachIndexed
+                            val isAudio = item.category == MediaCategory.Audio
+                            val effectiveFolderId = if (isAudio) null else targetFolderId?.takeIf { it != "__root__" }
+
                             contentResolver.openInputStream(uri)?.use { stream ->
                                 vaultContainer.repository.importStream(
                                     inputStream = stream,
                                     displayName = item.displayName,
                                     originalSize = item.sizeBytes,
                                     mimeType = item.mimeType,
-                                    destinationFolderId = targetFolderId,
+                                    destinationFolderId = effectiveFolderId,
                                     vmk = vmk,
                                 )
                                 successCount++

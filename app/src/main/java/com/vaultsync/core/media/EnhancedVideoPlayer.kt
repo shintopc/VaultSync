@@ -7,6 +7,7 @@ import android.content.pm.ActivityInfo
 import android.net.Uri
 import android.view.LayoutInflater
 import android.view.MotionEvent
+import android.view.WindowManager
 import android.widget.FrameLayout
 import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedVisibility
@@ -19,6 +20,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -31,6 +33,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
@@ -145,6 +148,60 @@ fun EnhancedVideoPlayer(
     var showForwardBadge by remember { mutableStateOf(false) }
     var modeFeedbackText by remember { mutableStateOf<String?>(null) }
 
+    // Brightness States & Window Controls
+    val initialSysBrightness = remember(context, activity) {
+        val windowBrightness = activity?.window?.attributes?.screenBrightness ?: -1f
+        if (windowBrightness in 0.01f..1.0f) {
+            windowBrightness
+        } else {
+            try {
+                val resolver = context.contentResolver
+                android.provider.Settings.System.getInt(
+                    resolver,
+                    android.provider.Settings.System.SCREEN_BRIGHTNESS,
+                    128
+                ) / 255f
+            } catch (_: Exception) {
+                0.7f
+            }.coerceIn(0.1f, 1.0f)
+        }
+    }
+    var brightness by remember { mutableFloatStateOf(initialSysBrightness) }
+    var isBrightnessDragging by remember { mutableStateOf(false) }
+    var showBrightnessBadge by remember { mutableStateOf(false) }
+    var showBrightnessSlider by remember { mutableStateOf(false) }
+
+    fun updateBrightness(newVal: Float) {
+        val clamped = newVal.coerceIn(0.01f, 1.0f)
+        brightness = clamped
+        activity?.let { act ->
+            val lp = act.window.attributes
+            lp.screenBrightness = clamped
+            act.window.attributes = lp
+        }
+        showBrightnessBadge = true
+    }
+
+    fun resetToSystemBrightness() {
+        activity?.let { act ->
+            val lp = act.window.attributes
+            lp.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+            act.window.attributes = lp
+        }
+        val sysVal = try {
+            val resolver = context.contentResolver
+            android.provider.Settings.System.getInt(
+                resolver,
+                android.provider.Settings.System.SCREEN_BRIGHTNESS,
+                128
+            ) / 255f
+        } catch (_: Exception) {
+            0.7f
+        }.coerceIn(0.1f, 1.0f)
+        brightness = sysVal
+        modeFeedbackText = "Brightness: System Default"
+    }
+
     // Tap tracking for single vs double tap
     var pendingSingleTapJob by remember { mutableStateOf<Job?>(null) }
     var lastTapTime by remember { mutableLongStateOf(0L) }
@@ -202,7 +259,12 @@ fun EnhancedVideoPlayer(
             exoPlayer.removeListener(listener)
             exoPlayer.stop()
             exoPlayer.release()
-            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            activity?.let { act ->
+                act.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                val lp = act.window.attributes
+                lp.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+                act.window.attributes = lp
+            }
         }
     }
 
@@ -215,14 +277,20 @@ fun EnhancedVideoPlayer(
     }
 
     // Auto-hide controls after 3.5 seconds of inactivity when playing
-    LaunchedEffect(showControls, isPlaying, isScrubbing, showSpeedDialog) {
-        if (showControls && isPlaying && !isScrubbing && !showSpeedDialog) {
+    LaunchedEffect(showControls, isPlaying, isScrubbing, showSpeedDialog, showBrightnessSlider) {
+        if (showControls && isPlaying && !isScrubbing && !showSpeedDialog && !showBrightnessSlider) {
             delay(3500)
             onToggleControls()
         }
     }
 
     // Clear feedback badges
+    LaunchedEffect(showBrightnessBadge, isBrightnessDragging) {
+        if (showBrightnessBadge && !isBrightnessDragging) {
+            delay(1200)
+            showBrightnessBadge = false
+        }
+    }
     LaunchedEffect(showRewindBadge) {
         if (showRewindBadge) {
             delay(650)
@@ -329,7 +397,17 @@ fun EnhancedVideoPlayer(
             },
         )
 
-        // 2. Gesture Detection Layer (Pinch-to-zoom, Pan, Double-tap seek/zoom, Single-tap controls toggle)
+        // 1.5 Soft dark scrim overlay for ultra-night viewing when brightness is very low (< 0.2f)
+        if (brightness < 0.2f) {
+            val nightScrimAlpha = ((0.2f - brightness) / 0.2f * 0.6f).coerceIn(0f, 0.6f)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = nightScrimAlpha))
+            )
+        }
+
+        // 2. Gesture Detection Layer (Pinch-to-zoom, Pan, Double-tap seek/zoom, Left vertical swipe brightness, Single-tap controls toggle)
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -340,11 +418,14 @@ fun EnhancedVideoPlayer(
                         val downPos = firstDown.position
                         var isMultiTouch = false
                         var isPanGesture = false
+                        var isBrightnessGesture = false
+                        var wasBrightnessDrag = false
                         var hasMovedPastSlop = false
                         val touchSlop = viewConfiguration.touchSlop
 
                         var prevDistance = 0f
                         var prevCentroid = Offset.Zero
+                        var brightnessStartVal = brightness
 
                         do {
                             val event = awaitPointerEvent()
@@ -352,6 +433,10 @@ fun EnhancedVideoPlayer(
                             val count = activePointers.size
 
                             if (count >= 2) {
+                                if (isBrightnessGesture) {
+                                    isBrightnessGesture = false
+                                    isBrightnessDragging = false
+                                }
                                 if (!isMultiTouch) {
                                     isMultiTouch = true
                                     // Auto-hide controls so user has unobstructed view while zooming
@@ -415,19 +500,45 @@ fun EnhancedVideoPlayer(
                             } else if (count == 1) {
                                 // 1 finger and not zoomed (scale <= 1.05f)
                                 val currentPos = activePointers[0].position
+                                val dx = currentPos.x - downPos.x
+                                val dy = currentPos.y - downPos.y
                                 val dragDistance = distanceBetween(currentPos, downPos)
-                                if (dragDistance > touchSlop) {
-                                    hasMovedPastSlop = true
-                                    // Do NOT consume! Let HorizontalPager handle page swipe!
+
+                                if (!isBrightnessGesture && !hasMovedPastSlop && dragDistance > touchSlop) {
+                                    val isLeftHalf = downPos.x < containerWidth * 0.45f
+                                    val isVertical = kotlin.math.abs(dy) > kotlin.math.abs(dx) * 1.3f
+                                    if (isLeftHalf && isVertical) {
+                                        isBrightnessGesture = true
+                                        wasBrightnessDrag = true
+                                        isBrightnessDragging = true
+                                        showBrightnessBadge = true
+                                        brightnessStartVal = brightness
+                                    } else {
+                                        hasMovedPastSlop = true
+                                    }
                                 }
+
+                                if (isBrightnessGesture) {
+                                    event.changes.forEach { it.consume() }
+                                    val deltaY = (downPos.y - currentPos.y) // Upwards increases brightness
+                                    val brightnessDelta = deltaY / (containerHeight * 0.65f)
+                                    val newBrightness = (brightnessStartVal + brightnessDelta).coerceIn(0.01f, 1.0f)
+                                    updateBrightness(newBrightness)
+                                }
+
                                 prevCentroid = currentPos
                                 prevDistance = 0f
                             }
                         } while (event.changes.any { it.pressed })
 
                         // Gesture ended (all fingers lifted)
+                        if (isBrightnessGesture) {
+                            isBrightnessGesture = false
+                            isBrightnessDragging = false
+                        }
+
                         val durationMs = System.currentTimeMillis() - downTime
-                        if (!isMultiTouch && !isPanGesture && !hasMovedPastSlop && durationMs < 400L) {
+                        if (!isMultiTouch && !isPanGesture && !hasMovedPastSlop && !wasBrightnessDrag && durationMs < 400L) {
                             val now = System.currentTimeMillis()
                             val tapPos = downPos
 
@@ -480,6 +591,57 @@ fun EnhancedVideoPlayer(
                     }
                 },
         )
+
+        // 2.5 Vertical Brightness Level Indicator Badge (Left Side)
+        AnimatedVisibility(
+            visible = showBrightnessBadge,
+            enter = fadeIn() + scaleIn(),
+            exit = fadeOut() + scaleOut(),
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(start = 28.dp),
+        ) {
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = Color.Black.copy(alpha = 0.82f),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)),
+                shadowElevation = 8.dp,
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = if (brightness > 0.6f) "☀️" else if (brightness > 0.25f) "🌤️" else "🌙",
+                        fontSize = 20.sp,
+                    )
+                    // Vertical Progress Bar
+                    Box(
+                        modifier = Modifier
+                            .width(6.dp)
+                            .height(100.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(Color.White.copy(alpha = 0.2f)),
+                        contentAlignment = Alignment.BottomCenter,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(100.dp * brightness)
+                                .clip(RoundedCornerShape(3.dp))
+                                .background(MaterialTheme.colorScheme.primary),
+                        )
+                    }
+                    Text(
+                        text = "${(brightness * 100).toInt()}%",
+                        color = Color.White,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+        }
 
         // 3. Double-tap Rewind Indicator Badge (-10s)
         AnimatedVisibility(
@@ -720,12 +882,59 @@ fun EnhancedVideoPlayer(
                             )
                         }
 
+                        // Expandable Brightness Slider Row
+                        AnimatedVisibility(
+                            visible = showBrightnessSlider,
+                            enter = fadeIn(),
+                            exit = fadeOut(),
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text("🌙", fontSize = 13.sp)
+                                Slider(
+                                    value = brightness,
+                                    onValueChange = { newVal -> updateBrightness(newVal) },
+                                    valueRange = 0.01f..1.0f,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(horizontal = 8.dp),
+                                    colors = SliderDefaults.colors(
+                                        thumbColor = MaterialTheme.colorScheme.primary,
+                                        activeTrackColor = MaterialTheme.colorScheme.primary,
+                                        inactiveTrackColor = Color.DarkGray,
+                                    ),
+                                )
+                                Text("☀️", fontSize = 13.sp)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color(0xFF2C2C2E),
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable { resetToSystemBrightness() },
+                                ) {
+                                    Text(
+                                        text = "Auto",
+                                        color = Color.White,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    )
+                                }
+                            }
+                        }
+
                         // Feature Action Buttons Row
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
                                 .padding(top = 4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             // 1. Mute / Unmute Button
@@ -736,7 +945,30 @@ fun EnhancedVideoPlayer(
                                 )
                             }
 
-                            // 2. Playback Speed Button (e.g. "1x", "1.5x")
+                            // 2. Brightness Toggle Button
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (showBrightnessSlider) MaterialTheme.colorScheme.primary else Color(0xFF2C2C2E),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable { showBrightnessSlider = !showBrightnessSlider },
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                                ) {
+                                    Text("☀️", fontSize = 13.sp)
+                                    Text(
+                                        text = "${(brightness * 100).toInt()}%",
+                                        color = if (showBrightnessSlider) MaterialTheme.colorScheme.onPrimary else Color.White,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                    )
+                                }
+                            }
+
+                            // 3. Playback Speed Button (e.g. "1x", "1.5x")
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
                                 color = if (playbackSpeed != 1.0f) MaterialTheme.colorScheme.primary else Color(0xFF2C2C2E),

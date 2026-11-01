@@ -14,6 +14,7 @@ import com.vaultsync.core.vault.FakeVaultEntryDao
 import com.vaultsync.core.vault.FakeVaultFolderDao
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -432,6 +433,61 @@ class VaultSessionAndNavigationTest {
 
         val updatedSubfolder = repository.getEntries(folder.id).first()
         assertTrue(updatedSubfolder.isEmpty())
+    }
+
+    @Test
+    fun audioImportAndCategoryRecognitionTest(): Unit = runBlocking {
+        session.unlock(vmk)
+
+        val audioExtensions = listOf("mp3", "m4a", "wav", "aac", "opus", "ogg", "amr", "3ga")
+        for (ext in audioExtensions) {
+            val audioBytes = "Mock audio content for $ext recording test".toByteArray()
+            val entry = repository.importStream(
+                inputStream = java.io.ByteArrayInputStream(audioBytes),
+                displayName = "voice_note.$ext",
+                originalSize = audioBytes.size.toLong(),
+                mimeType = null,
+                destinationFolderId = null,
+                vmk = vmk,
+            )
+
+            assertEquals(VaultCategory.Audio, entry.category)
+            assertEquals("voice_note.$ext", entry.originalFileName)
+            assertEquals(audioBytes.size.toLong(), entry.originalSizeBytes)
+
+            // Test decryption roundtrip
+            val exportFile = tempFolder.newFile("decrypted_$ext.$ext")
+            repository.exportOrDecrypt(entry.id, exportFile, vmk)
+            assertArrayEquals(audioBytes, exportFile.readBytes())
+        }
+    }
+
+    @Test
+    fun importWithInvalidOrRootFolderDoesNotCrashTest(): Unit = runBlocking {
+        session.unlock(vmk)
+        val testBytes = "Hello VaultSync test content".toByteArray()
+
+        // 1. Importing with __root__ folder ID should safely import to root folder (null) without crash
+        val rootEntry = repository.importStream(
+            inputStream = java.io.ByteArrayInputStream(testBytes),
+            displayName = "test_root.txt",
+            originalSize = testBytes.size.toLong(),
+            mimeType = "text/plain",
+            destinationFolderId = "__root__",
+            vmk = vmk,
+        )
+        assertNull(rootEntry.folderId)
+
+        // 2. Importing with deleted or non-existent folder ID should safely fall back to null
+        val fallbackEntry = repository.importStream(
+            inputStream = java.io.ByteArrayInputStream(testBytes),
+            displayName = "test_fallback.txt",
+            originalSize = testBytes.size.toLong(),
+            mimeType = "text/plain",
+            destinationFolderId = "deleted-or-nonexistent-folder-id",
+            vmk = vmk,
+        )
+        assertNull(fallbackEntry.folderId)
     }
 }
 

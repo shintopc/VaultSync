@@ -68,6 +68,7 @@ import com.vaultsync.core.media.AndroidMediaRepository
 import com.vaultsync.core.media.DeviceMediaItem
 import com.vaultsync.core.media.MediaCategory
 import com.vaultsync.core.media.MediaFolder
+import com.vaultsync.core.media.foldersForCategory
 import com.vaultsync.core.media.foldersForGallery
 import com.vaultsync.core.media.mediaPermissionStatusFromGrantResults
 import com.vaultsync.core.media.requiredMediaPermissions
@@ -76,6 +77,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
 
+enum class VaultPickerCategory(val label: String) {
+    ALL("All"),
+    PHOTOS_VIDEOS("Photos & Videos"),
+    AUDIO("Audio"),
+}
+
 @Composable
 fun VaultMediaPicker(
     onDismiss: () -> Unit,
@@ -83,6 +90,7 @@ fun VaultMediaPicker(
     onSystemPickerFallback: () -> Unit,
     isImporting: Boolean = false,
     importProgressText: String? = null,
+    initialCategory: MediaCategory? = null,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -90,7 +98,7 @@ fun VaultMediaPicker(
 
     var hasPermission by remember {
         mutableStateOf(
-            requiredPermissions.all {
+            requiredPermissions.any {
                 ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
             },
         )
@@ -99,11 +107,17 @@ fun VaultMediaPicker(
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
     ) { grants ->
-        hasPermission = grants.values.all { it }
+        hasPermission = grants.values.any { it }
     }
 
-    var allMediaItems by remember { mutableStateOf<List<DeviceMediaItem>>(emptyList()) }
-    var albums by remember { mutableStateOf<List<MediaFolder>>(emptyList()) }
+    val initialTab = when (initialCategory) {
+        MediaCategory.Audio -> VaultPickerCategory.AUDIO
+        MediaCategory.Images, MediaCategory.Videos -> VaultPickerCategory.PHOTOS_VIDEOS
+        else -> VaultPickerCategory.ALL
+    }
+    var selectedCategoryTab by remember { mutableStateOf(initialTab) }
+
+    var rawMediaItems by remember { mutableStateOf<List<DeviceMediaItem>>(emptyList()) }
     var selectedFolderKey by remember { mutableStateOf<String?>(null) } // null = All Media
     val selectedItems = remember { mutableStateOf<Set<DeviceMediaItem>>(emptySet()) }
     var isLoadingMedia by remember { mutableStateOf(false) }
@@ -114,12 +128,9 @@ fun VaultMediaPicker(
         scope.launch {
             val repo = AndroidMediaRepository(context)
             val items = withContext(Dispatchers.IO) {
-                repo.loadMediaStoreItems().filter {
-                    it.category == MediaCategory.Images || it.category == MediaCategory.Videos
-                }
+                repo.loadMediaStoreItems()
             }
-            allMediaItems = items
-            albums = foldersForGallery(items)
+            rawMediaItems = items
             isLoadingMedia = false
         }
     }
@@ -130,11 +141,36 @@ fun VaultMediaPicker(
         }
     }
 
-    val displayedItems = remember(allMediaItems, selectedFolderKey) {
+    // Filter items based on selected category tab
+    val categoryFilteredItems = remember(rawMediaItems, selectedCategoryTab) {
+        when (selectedCategoryTab) {
+            VaultPickerCategory.ALL -> rawMediaItems
+            VaultPickerCategory.PHOTOS_VIDEOS -> rawMediaItems.filter {
+                it.category == MediaCategory.Images || it.category == MediaCategory.Videos
+            }
+            VaultPickerCategory.AUDIO -> rawMediaItems.filter {
+                it.category == MediaCategory.Audio
+            }
+        }
+    }
+
+    val albums = remember(categoryFilteredItems, selectedCategoryTab) {
+        when (selectedCategoryTab) {
+            VaultPickerCategory.AUDIO -> foldersForCategory(categoryFilteredItems, MediaCategory.Audio)
+            VaultPickerCategory.PHOTOS_VIDEOS -> foldersForGallery(categoryFilteredItems)
+            VaultPickerCategory.ALL -> {
+                val galleryFolders = foldersForGallery(categoryFilteredItems)
+                val audioFolders = foldersForCategory(categoryFilteredItems, MediaCategory.Audio)
+                galleryFolders + audioFolders
+            }
+        }
+    }
+
+    val displayedItems = remember(categoryFilteredItems, selectedFolderKey) {
         if (selectedFolderKey == null) {
-            allMediaItems
+            categoryFilteredItems
         } else {
-            allMediaItems.filter { it.folderKey == selectedFolderKey }
+            categoryFilteredItems.filter { it.folderKey == selectedFolderKey }
         }
     }
 
@@ -263,25 +299,59 @@ fun VaultMediaPicker(
                         }
                     }
                 } else {
-                    // Album Filter Strip
+                    // 1. Category Switcher (All | Photos & Videos | Audio)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        VaultPickerCategory.values().forEach { tab ->
+                            val isSelected = selectedCategoryTab == tab
+                            val count = when (tab) {
+                                VaultPickerCategory.ALL -> rawMediaItems.size
+                                VaultPickerCategory.PHOTOS_VIDEOS -> rawMediaItems.count { it.category == MediaCategory.Images || it.category == MediaCategory.Videos }
+                                VaultPickerCategory.AUDIO -> rawMediaItems.count { it.category == MediaCategory.Audio }
+                            }
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = {
+                                    selectedCategoryTab = tab
+                                    selectedFolderKey = null
+                                },
+                                label = { Text("${tab.label} ($count)") },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = Color.White,
+                                    selectedLabelColor = Color.Black,
+                                    containerColor = Color(0xFF1C1C1E),
+                                    labelColor = Color.White,
+                                ),
+                                shape = RoundedCornerShape(16.dp),
+                            )
+                        }
+                    }
+
+                    // 2. Album / Folder Filter Strip for the current category
                     if (albums.isNotEmpty()) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .horizontalScroll(rememberScrollState())
-                                .padding(horizontal = 16.dp, vertical = 6.dp),
+                                .padding(horizontal = 16.dp, vertical = 4.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             FilterChip(
                                 selected = selectedFolderKey == null,
                                 onClick = { selectedFolderKey = null },
-                                label = { Text("All Media (${allMediaItems.size})") },
+                                label = { Text("All Folders (${categoryFilteredItems.size})") },
                                 colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = Color.White,
-                                    selectedLabelColor = Color.Black,
-                                    containerColor = Color(0xFF1C1C1E),
-                                    labelColor = Color.White,
+                                    selectedContainerColor = Color(0xFF3A3A3C),
+                                    selectedLabelColor = Color.White,
+                                    containerColor = Color(0xFF141416),
+                                    labelColor = Color(0xFF8E8E93),
                                 ),
                                 shape = RoundedCornerShape(16.dp),
                             )
@@ -292,10 +362,10 @@ fun VaultMediaPicker(
                                     onClick = { selectedFolderKey = album.key },
                                     label = { Text("${album.name} (${album.itemCount})") },
                                     colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = Color.White,
-                                        selectedLabelColor = Color.Black,
-                                        containerColor = Color(0xFF1C1C1E),
-                                        labelColor = Color.White,
+                                        selectedContainerColor = Color(0xFF3A3A3C),
+                                        selectedLabelColor = Color.White,
+                                        containerColor = Color(0xFF141416),
+                                        labelColor = Color(0xFF8E8E93),
                                     ),
                                     shape = RoundedCornerShape(16.dp),
                                 )
@@ -318,9 +388,17 @@ fun VaultMediaPicker(
                             displayedItems.isEmpty() -> {
                                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text("🖼️", fontSize = 42.sp)
+                                        Text(
+                                            if (selectedCategoryTab == VaultPickerCategory.AUDIO) "🎵" else "🖼️",
+                                            fontSize = 42.sp
+                                        )
                                         Spacer(modifier = Modifier.height(12.dp))
-                                        Text("No media found in this album", color = Color(0xFF8E8E93), fontSize = 15.sp)
+                                        Text(
+                                            if (selectedCategoryTab == VaultPickerCategory.AUDIO) "No audio files found"
+                                            else "No media found in this album",
+                                            color = Color(0xFF8E8E93),
+                                            fontSize = 15.sp
+                                        )
                                     }
                                 }
                             }
@@ -332,7 +410,7 @@ fun VaultMediaPicker(
                                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                                     verticalArrangement = Arrangement.spacedBy(4.dp),
                                 ) {
-                                    items(displayedItems, key = { it.id }) { item ->
+                                    items(displayedItems, key = { "picker_${it.id}_${it.category.name}" }) { item ->
                                         val isSelected = item in selectedItems.value
 
                                         Box(
@@ -348,12 +426,51 @@ fun VaultMediaPicker(
                                                     selectedItems.value = next
                                                 },
                                         ) {
-                                            AsyncImage(
-                                                model = item.uri,
-                                                contentDescription = item.displayName,
-                                                modifier = Modifier.fillMaxSize(),
-                                                contentScale = ContentScale.Crop,
-                                            )
+                                            if (item.category == MediaCategory.Audio) {
+                                                // Dedicated Audio Card Tile
+                                                Column(
+                                                    modifier = Modifier
+                                                        .fillMaxSize()
+                                                        .padding(8.dp),
+                                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                                    verticalArrangement = Arrangement.Center,
+                                                ) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .size(38.dp)
+                                                            .clip(CircleShape)
+                                                            .background(Color(0xFF2C2C2E)),
+                                                        contentAlignment = Alignment.Center,
+                                                    ) {
+                                                        Text("🎵", fontSize = 18.sp)
+                                                    }
+                                                    Spacer(modifier = Modifier.height(6.dp))
+                                                    Text(
+                                                        text = item.displayName,
+                                                        color = Color.White,
+                                                        fontSize = 11.sp,
+                                                        fontWeight = FontWeight.Medium,
+                                                        maxLines = 2,
+                                                        overflow = TextOverflow.Ellipsis,
+                                                        textAlign = TextAlign.Center,
+                                                    )
+                                                    if (item.durationMillis > 0) {
+                                                        Text(
+                                                            text = formatDuration(item.durationMillis),
+                                                            color = Color(0xFF8E8E93),
+                                                            fontSize = 10.sp,
+                                                            modifier = Modifier.padding(top = 2.dp),
+                                                        )
+                                                    }
+                                                }
+                                            } else {
+                                                AsyncImage(
+                                                    model = item.uri,
+                                                    contentDescription = item.displayName,
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    contentScale = ContentScale.Crop,
+                                                )
+                                            }
 
                                             // Dim overlay if selected
                                             if (isSelected) {

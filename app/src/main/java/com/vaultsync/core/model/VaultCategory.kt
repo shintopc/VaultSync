@@ -34,7 +34,8 @@ enum class VaultCategory(val label: String) {
             "mp4", "mkv", "webm", "avi", "mov", "wmv", "3gp", "flv", "m4v"
         )
         private val audioExtensions = setOf(
-            "mp3", "m4a", "aac", "wav", "flac", "ogg", "opus", "wma", "mid"
+            "mp3", "m4a", "aac", "wav", "flac", "ogg", "opus", "wma", "mid",
+            "amr", "3ga", "m4r", "aiff", "caf", "oga", "mp2", "mpga", "weba"
         )
         private val documentExtensions = setOf(
             "pdf", "doc", "docx", "txt", "rtf", "odt", "xls", "xlsx", "csv", "ppt", "pptx", "html", "md", "json"

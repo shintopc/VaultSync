@@ -192,39 +192,43 @@ class AndroidVaultRepository(
     ): VaultEntry = withContext(Dispatchers.IO) {
         val cleanName = displayName.trim().ifBlank { "Untitled" }
 
-        if (destinationFolderId != null) {
-            val parent = folderDao.getById(destinationFolderId)
-            requireNotNull(parent) { "Destination folder $destinationFolderId does not exist" }
-        }
+        val validFolderId = destinationFolderId?.takeIf { it.isNotBlank() && it != "__root__" }
+            ?.let { fid -> if (folderDao.getById(fid) != null) fid else null }
 
         val blobId = UUID.randomUUID().toString()
         val tempFile = storageManager.getTempBlobFile(blobId)
         val finalBlobFile = storageManager.getEncryptedBlobFile(blobId)
         val category = VaultCategory.fromMimeOrExtension(mimeType, cleanName)
 
-        var actualOriginalSize = originalSize
-        var tempSpoolFile: File? = null
-        var streamToEncrypt: InputStream = inputStream
+        if (originalSize > 0 && !storageManager.hasAvailableStorage(originalSize)) {
+            val available = storageManager.getAvailableStorageBytes()
+            throw java.io.IOException("Insufficient storage: requires $originalSize bytes, but available storage is $available bytes.")
+        }
 
-        if (originalSize <= 0L) {
-            val spool = storageManager.getTempBlobFile("spool_${blobId}")
-            tempSpoolFile = spool
+        // Always spool incoming stream to a temporary spool file:
+        // ContentResolver, SAF, and MediaStore streams often report stale, estimated, or -1 size.
+        // Spooling guarantees:
+        // 1. Exact, true byte size on disk (spool.length())
+        // 2. Accurate pre-encryption storage availability verification
+        // 3. Reliable, non-fragmented local stream during AES-GCM chunked encryption
+        val spool = storageManager.getTempBlobFile("spool_${blobId}")
+        val tempSpoolFile: File = spool
+        var streamToEncrypt: InputStream? = null
+
+        try {
             FileOutputStream(spool).use { out ->
                 inputStream.copyTo(out)
             }
-            actualOriginalSize = spool.length()
+            val actualOriginalSize = spool.length()
+
+            if (actualOriginalSize > 0 && !storageManager.hasAvailableStorage(actualOriginalSize)) {
+                val available = storageManager.getAvailableStorageBytes()
+                throw java.io.IOException("Insufficient storage: requires $actualOriginalSize bytes, but available storage is $available bytes.")
+            }
+
             streamToEncrypt = FileInputStream(spool)
-        }
+            var encResultSizeBytes = 0L
 
-        if (actualOriginalSize > 0 && !storageManager.hasAvailableStorage(actualOriginalSize)) {
-            tempSpoolFile?.delete()
-            val available = storageManager.getAvailableStorageBytes()
-            throw java.io.IOException("Insufficient storage: requires $actualOriginalSize bytes, but available storage is $available bytes.")
-        }
-
-        var encResultSizeBytes = 0L
-
-        try {
             // 1. Stream encryption incrementally into temp file
             BufferedOutputStream(FileOutputStream(tempFile)).use { output ->
                 val result = VaultFileEncryptor.encryptStream(
@@ -255,7 +259,7 @@ class AndroidVaultRepository(
             val now = System.currentTimeMillis()
             val entity = VaultEntryEntity(
                 id = blobId,
-                folderId = destinationFolderId,
+                folderId = validFolderId,
                 originalFileName = cleanName,
                 category = category.name,
                 mimeType = mimeType,
@@ -276,13 +280,11 @@ class AndroidVaultRepository(
             }
             throw e
         } finally {
-            if (tempSpoolFile != null) {
-                try {
-                    streamToEncrypt.close()
-                } catch (_: Exception) {}
-                if (tempSpoolFile.exists()) {
-                    tempSpoolFile.delete()
-                }
+            try {
+                streamToEncrypt?.close()
+            } catch (_: Exception) {}
+            if (tempSpoolFile.exists()) {
+                tempSpoolFile.delete()
             }
         }
     }

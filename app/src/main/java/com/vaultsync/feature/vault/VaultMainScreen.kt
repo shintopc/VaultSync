@@ -101,6 +101,7 @@ fun VaultMainScreen(
     var isMoreMenuOpen by remember { mutableStateOf(false) }
     var isFabMenuOpen by remember { mutableStateOf(false) }
     var isMediaPickerOpen by remember { mutableStateOf(false) }
+    var pickerInitialCategory by remember { mutableStateOf<com.vaultsync.core.media.MediaCategory?>(null) }
 
     var showBatchMoveDialog by remember { mutableStateOf(false) }
     var showBatchCopyDialog by remember { mutableStateOf(false) }
@@ -404,6 +405,7 @@ fun VaultMainScreen(
                                     .fillMaxWidth()
                                     .clickable {
                                         isFabMenuOpen = false
+                                        pickerInitialCategory = com.vaultsync.core.media.MediaCategory.Images
                                         isMediaPickerOpen = true
                                     }
                                     .padding(horizontal = 16.dp, vertical = 10.dp),
@@ -412,6 +414,22 @@ fun VaultMainScreen(
                                 Icon(Icons.Default.PhotoLibrary, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text("Add Photos & Videos", fontWeight = FontWeight.Medium, color = Color.White)
+                            }
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        isFabMenuOpen = false
+                                        pickerInitialCategory = com.vaultsync.core.media.MediaCategory.Audio
+                                        isMediaPickerOpen = true
+                                    }
+                                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(Icons.Default.Audiotrack, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text("Add Audio Recordings", fontWeight = FontWeight.Medium, color = Color.White)
                             }
 
                             Row(
@@ -434,7 +452,11 @@ fun VaultMainScreen(
                                     .fillMaxWidth()
                                     .clickable {
                                         isFabMenuOpen = false
-                                        importLauncher.launch(arrayOf("*/*"))
+                                        if (uiState.viewTab == VaultViewTab.AUDIO) {
+                                            importLauncher.launch(arrayOf("audio/*", "*/*"))
+                                        } else {
+                                            importLauncher.launch(arrayOf("*/*"))
+                                        }
                                     }
                                     .padding(horizontal = 16.dp, vertical = 10.dp),
                                 verticalAlignment = Alignment.CenterVertically,
@@ -615,7 +637,10 @@ fun VaultMainScreen(
                             title = "No Audio Recordings in Vault",
                             description = "Private audio recordings, songs, and voice notes stay in this dedicated section.",
                             actionLabel = "Import Audio",
-                            onAction = { importLauncher.launch(arrayOf("audio/*")) },
+                            onAction = {
+                                pickerInitialCategory = com.vaultsync.core.media.MediaCategory.Audio
+                                isMediaPickerOpen = true
+                            },
                         )
                     } else {
                         LazyColumn(
@@ -855,10 +880,15 @@ fun VaultMainScreen(
             },
             onSystemPickerFallback = {
                 isMediaPickerOpen = false
-                importLauncher.launch(arrayOf("*/*"))
+                if (pickerInitialCategory == com.vaultsync.core.media.MediaCategory.Audio || uiState.viewTab == VaultViewTab.AUDIO) {
+                    importLauncher.launch(arrayOf("audio/*", "*/*"))
+                } else {
+                    importLauncher.launch(arrayOf("*/*"))
+                }
             },
             isImporting = uiState.isImporting,
             importProgressText = uiState.importProgressText,
+            initialCategory = pickerInitialCategory,
         )
     }
 
