@@ -44,8 +44,8 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.rounded.DriveFileMove
+import androidx.compose.material.icons.automirrored.filled.*
+import androidx.compose.material.icons.automirrored.rounded.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -242,7 +242,7 @@ fun VaultMainScreen(
 
                         // Move out of Vault to Gallery
                         IconButton(onClick = { showBatchMoveOutDialog = true }) {
-                            Icon(Icons.Default.DriveFileMove, contentDescription = "Export to Gallery", tint = Color.White, modifier = Modifier.size(20.dp))
+                            Icon(Icons.AutoMirrored.Filled.DriveFileMove, contentDescription = "Export to Gallery", tint = Color.White, modifier = Modifier.size(20.dp))
                         }
 
                         // Move to folder
@@ -507,7 +507,7 @@ fun VaultMainScreen(
                         // Grid / List toggle
                         IconButton(onClick = { viewModel.toggleViewMode() }) {
                             Icon(
-                                imageVector = if (uiState.isGridView) Icons.Default.ViewList else Icons.Default.GridView,
+                                imageVector = if (uiState.isGridView) Icons.AutoMirrored.Filled.ViewList else Icons.Default.GridView,
                                 contentDescription = "Toggle view",
                                 tint = Color.White,
                                 modifier = Modifier.size(20.dp),
@@ -1349,7 +1349,7 @@ private fun VaultPhotoGridItem(
                     DropdownMenuItem(
                         text = { Text("Move", color = Color.White) },
                         leadingIcon = {
-                            Icon(Icons.Rounded.DriveFileMove, contentDescription = null, tint = Color.White)
+                            Icon(Icons.AutoMirrored.Rounded.DriveFileMove, contentDescription = null, tint = Color.White)
                         },
                         onClick = {
                             menuExpanded = false
@@ -1710,7 +1710,7 @@ private fun VaultAudioItemCard(
                 )
                 DropdownMenuItem(
                     text = { Text("Move", color = Color.White) },
-                    leadingIcon = { Icon(Icons.Rounded.DriveFileMove, contentDescription = null, tint = Color.White) },
+                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.DriveFileMove, contentDescription = null, tint = Color.White) },
                     onClick = { menuExpanded = false; onMove() },
                 )
                 DropdownMenuItem(
@@ -1952,7 +1952,7 @@ fun EntryListItem(
                         )
                         DropdownMenuItem(
                             text = { Text("Move", color = Color.White) },
-                            leadingIcon = { Icon(Icons.Rounded.DriveFileMove, contentDescription = null, tint = Color.White) },
+                            leadingIcon = { Icon(Icons.AutoMirrored.Rounded.DriveFileMove, contentDescription = null, tint = Color.White) },
                             onClick = { menuExpanded = false; onMove() },
                         )
                         DropdownMenuItem(

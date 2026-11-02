@@ -54,8 +54,12 @@ We are proud to announce **VaultSync v1.0.3**, a major security, resiliency, and
 - **SAF Custom Directory Picker**: Select any folder across internal storage, external SD cards, or OTG drives using Android's system document picker.
 - **Crash-Resilient Manifest Synchronization**: Background manifest writes feature atomic flush buffers, write-lock isolation, and automatic fallback to `manifest.vsm.bak`.
 - **Lockout Recovery Fixes (Routes 1 & 2)**:
-  - **Route 1 (Universal Web Gateway)**: Created `open.html` and `index.html` for instant one-tap browser launching, bypassing mobile browser address bar search overrides, and added web intent filters for `shintopc.github.io` and `vaultsync.app`. Added a direct **Test Launch** button in the dialog.
-  - **Route 2 (Modern Android Telephony Secret Code)**: Added `android.telephony.action.SECRET_CODE` intent filters alongside legacy actions, implemented high-priority heads-up recovery notifications (`vaultsync_recovery`) to overcome Android 10+ background activity start restrictions, and added automatic icon un-hiding upon valid recovery trigger. Added a direct **Test Code** button in the dialog.
+  - **Route 1 (Universal Web & Offline Gateway)**: Added automated GitHub Actions deployment workflow (`.github/workflows/deploy-pages.yml`) for `open.html` and `index.html` to guarantee 100% online availability. Added offline local HTML gateway generation (`Save HTML Gateway`) into device Documents and Downloads folders so browser launching works with zero internet. Updated **Test Launch** button to fire intent directly on device.
+  - **Route 2 (Modern Android Telephony Secret Code)**: Added `android.telephony.action.SECRET_CODE` intent filters alongside legacy actions, implemented high-priority heads-up recovery notifications (`vaultsync_recovery`) with full-screen intent to overcome Android 10+ background activity start restrictions, and added automatic icon un-hiding upon valid recovery trigger.
+- **Production Hardening & Resource Lifecycle**:
+  - **Camera2 Lifecycle Guarantee**: Added explicit camera device closure in `IntruderCaptureManager` to release camera hardware locks promptly upon snapshot acquisition.
+  - **Compose Vector Modernization**: Cleaned all deprecated icon references to official `AutoMirrored` icons across `MediaScreen`, `VaultMainScreen`, and `SettingsScreen`.
+  - **Dynamic Settings Versioning**: Dynamically reads app version from package manager across all About screens and settings dialogs.
 
 ---
 
@@ -67,6 +71,6 @@ We are proud to announce **VaultSync v1.0.3**, a major security, resiliency, and
 - **Version Name**: `1.0.3`
 - **Target SDK**: Android 16 (API 37) / Min SDK: Android 8.0 (API 26)
 - **Signer**: `CN=VaultSync, OU=Production, O=VaultSync, C=US` (4096-bit RSA)
-- **APK SHA-256**: `F89024FA8173C11625C7AB30299BE6AD9894A7FADC3FE557650FE06CC9D526D7`
+- **APK SHA-256**: `D06C2E864DFF9B21FBF2B46AA95B0D4C424B4684B94A6159A09E19E23429D08C`
 - **Test Suite**: 134 automated unit tests passing (100% pass rate)
 

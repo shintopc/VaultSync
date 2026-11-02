@@ -54,10 +54,8 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.*
+import androidx.compose.material.icons.automirrored.rounded.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.Icon
@@ -238,6 +236,13 @@ fun SettingsScreen(
     var showServerPortInfoDialog by remember { mutableStateOf(false) }
     var showPermissionsDialog by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
+    val appVersion = remember(context) {
+        try {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0.3"
+        } catch (_: Exception) {
+            "1.0.3"
+        }
+    }
     var showThemeInfoDialog by remember { mutableStateOf(false) }
     var showMigrationInfoDialog by remember { mutableStateOf(false) }
     var showVaultDiscoveryDialog by remember { mutableStateOf(false) }
@@ -852,7 +857,7 @@ fun SettingsScreen(
             },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Version: 0.1.0 (Production Hardened)", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Version: $appVersion (Production Hardened)", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                     Text("Architecture: Jetpack Compose + Ktor CIO + Room", color = Color(0xFF8E8E93), fontSize = 12.sp)
                     Text("Cryptography: AES-256-GCM + Android KeyStore", color = Color(0xFF8E8E93), fontSize = 12.sp)
                     Text("Privacy: 100% Zero-Cloud, completely offline media gallery.", color = Color(0xFF8E8E93), fontSize = 12.sp)
@@ -1495,7 +1500,7 @@ private fun SecurityPrivacySubScreen(
                 )
                 SettingsDivider()
                 SettingsTile(
-                    iconVector = Icons.Rounded.MenuBook,
+                    iconVector = Icons.AutoMirrored.Rounded.MenuBook,
                     iconBg = Color(0xFF1B2E24),
                     title = "Lockout Recovery Guide",
                     subtitle = "Dialer code (*#*#82858#*#*) & deep links (vaultsync://open)",
@@ -1945,7 +1950,7 @@ private fun AppearanceCamouflageSubScreen(
                 )
                 SettingsDivider()
                 SettingsTile(
-                    iconVector = Icons.Rounded.MenuBook,
+                    iconVector = Icons.AutoMirrored.Rounded.MenuBook,
                     iconBg = Color(0xFF1B2E24),
                     title = "Lockout Recovery Guide",
                     subtitle = "Complete instructions for recovering hidden or locked app",
@@ -2350,6 +2355,14 @@ private fun AboutSubScreen(
     onOpenAboutDialog: () -> Unit,
     onOpenEncryptionInfo: () -> Unit,
 ) {
+    val context = LocalContext.current
+    val appVersion = remember(context) {
+        try {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0.3"
+        } catch (_: Exception) {
+            "1.0.3"
+        }
+    }
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -2394,7 +2407,7 @@ private fun AboutSubScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Version 1.0.2 • Security Verified",
+                        text = "Version $appVersion • Security Verified",
                         color = Color(0xFF8E8E93),
                         fontSize = 13.sp,
                     )
@@ -2405,7 +2418,7 @@ private fun AboutSubScreen(
         item {
             SettingsSection(title = "DIAGNOSTICS & SYSTEM PERMISSIONS") {
                 SettingsTile(
-                    iconVector = Icons.Rounded.Assignment,
+                    iconVector = Icons.AutoMirrored.Rounded.Assignment,
                     iconBg = Color(0xFF24242A),
                     title = "Device Permissions Overview",
                     subtitle = "Inspect storage, biometric, and network permission grants",

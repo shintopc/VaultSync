@@ -5,6 +5,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Environment
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -36,7 +37,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -44,6 +44,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.io.File
 
 @Composable
 fun RecoveryGuideDialog(
@@ -76,11 +77,59 @@ fun RecoveryGuideDialog(
     fun testDeepLink(link: String) {
         try {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(link)).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
             context.startActivity(intent)
         } catch (e: Exception) {
             Toast.makeText(context, "Unable to launch link: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun saveOfflineHtmlGateway() {
+        try {
+            val htmlContent = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VaultSync Recovery Gateway</title>
+    <style>
+        body { background:#000; color:#fff; font-family:sans-serif; text-align:center; padding:40px 20px; }
+        .card { background:#1C1C1E; border:1px solid #2C2C2E; border-radius:20px; padding:32px 24px; max-width:400px; margin:auto; }
+        .btn { display:block; width:100%; background:#0A84FF; color:#fff; font-weight:bold; font-size:16px; padding:16px; border-radius:12px; border:none; cursor:pointer; margin-top:20px; text-decoration:none; }
+    </style>
+    <script>
+        function launch() {
+            window.location.href = "intent://open#Intent;scheme=vaultsync;package=com.vaultsync.app;end";
+            setTimeout(function() { window.location.href = "vaultsync://open"; }, 500);
+        }
+        window.onload = launch;
+    </script>
+</head>
+<body>
+    <div class="card">
+        <div style="font-size:48px;">🔓</div>
+        <h2 style="margin-top:10px;">VaultSync Recovery</h2>
+        <p style="color:#8E8E93;margin-top:8px;">Launching your private vault...</p>
+        <button class="btn" onclick="launch()">Open VaultSync App</button>
+        <a class="btn" style="background:#2C2C2E;margin-top:10px;" href="vaultsync://open">Direct Scheme Link</a>
+    </div>
+</body>
+</html>
+            """.trimIndent()
+
+            val docsDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), "VaultSync")
+            if (!docsDir.exists()) docsDir.mkdirs()
+            File(docsDir, "VaultSync_Recovery.html").writeText(htmlContent)
+
+            val dlDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            if (dlDir != null && dlDir.exists()) {
+                File(dlDir, "VaultSync_Recovery.html").writeText(htmlContent)
+            }
+            Toast.makeText(context, "Saved VaultSync_Recovery.html to Downloads & Documents!", Toast.LENGTH_LONG).show()
+        } catch (e: Exception) {
+            Toast.makeText(context, "Unable to save file: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -165,7 +214,7 @@ fun RecoveryGuideDialog(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Route 1: Web & Deep Link Gateway",
+                                text = "Route 1: Deep Link & Browser Gateway",
                                 color = Color.White,
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 14.sp,
@@ -173,13 +222,13 @@ fun RecoveryGuideDialog(
                         }
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "Tap or send this recovery URL from any web browser, note, or messenger (WhatsApp, Telegram, Notes) to launch VaultSync:",
+                            text = "Tap or send this recovery link from any note, chat (WhatsApp/Telegram), or browser to launch VaultSync immediately:",
                             color = Color(0xFF8E8E93),
                             fontSize = 12.sp,
                         )
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // Web link box
+                        // App Scheme box
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -189,15 +238,15 @@ fun RecoveryGuideDialog(
                         ) {
                             Column {
                                 Text(
-                                    text = "https://shintopc.github.io/VaultSync/open.html",
+                                    text = "vaultsync://open",
                                     color = Color(0xFF64D2FF),
                                     fontFamily = FontFamily.Monospace,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp,
+                                    fontSize = 14.sp,
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "Custom scheme: vaultsync://open",
+                                    text = "Online: https://shintopc.github.io/VaultSync/open.html",
                                     color = Color(0xFF98989D),
                                     fontFamily = FontFamily.Monospace,
                                     fontSize = 11.sp,
@@ -207,7 +256,7 @@ fun RecoveryGuideDialog(
 
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "💡 Tip: Typing 'vaultsync://' directly in Chrome's URL bar performs a Google search. Use the web link above or tap 'Test Launch' to open the app directly.",
+                            text = "💡 Note: In Chrome's URL bar, typing 'vaultsync://' triggers a Google Search. Use 'Test Launch' below to open via Android intent, or save the offline gateway HTML file to Downloads for one-tap browser launching.",
                             color = Color(0xFFFFD60A),
                             fontSize = 11.sp,
                             lineHeight = 15.sp,
@@ -219,18 +268,25 @@ fun RecoveryGuideDialog(
                             horizontalArrangement = Arrangement.End,
                         ) {
                             OutlinedButton(
-                                onClick = { testDeepLink("https://shintopc.github.io/VaultSync/open.html") },
+                                onClick = { saveOfflineHtmlGateway() },
+                                modifier = Modifier.height(34.dp),
+                            ) {
+                                Text("Save HTML Gateway", fontSize = 11.sp, color = Color.White)
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            OutlinedButton(
+                                onClick = { testDeepLink("vaultsync://open") },
                                 modifier = Modifier.height(34.dp),
                             ) {
                                 Text("Test Launch", fontSize = 11.sp, color = Color.White)
                             }
                             Spacer(modifier = Modifier.width(8.dp))
                             Button(
-                                onClick = { copyToClipboard("VaultSync Web Recovery", "https://shintopc.github.io/VaultSync/open.html") },
+                                onClick = { copyToClipboard("VaultSync Recovery Link", "vaultsync://open") },
                                 modifier = Modifier.height(34.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3A3A3C)),
                             ) {
-                                Text("Copy Link", fontSize = 11.sp, color = Color.White)
+                                Text("Copy", fontSize = 11.sp, color = Color.White)
                             }
                         }
                     }

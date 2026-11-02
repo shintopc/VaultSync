@@ -151,6 +151,7 @@ object IntruderCaptureManager {
 
         val imageReader = ImageReader.newInstance(640, 480, ImageFormat.JPEG, 2)
         val photoFile = File(getLogsDir(context), "intruder_${System.currentTimeMillis()}.jpg")
+        var activeCamera: CameraDevice? = null
 
         imageReader.setOnImageAvailableListener({ reader ->
             val image = reader.acquireLatestImage() ?: return@setOnImageAvailableListener
@@ -166,6 +167,7 @@ object IntruderCaptureManager {
             } finally {
                 image.close()
                 reader.close()
+                try { activeCamera?.close() } catch (_: Exception) {}
                 thread.quitSafely()
             }
         }, handler)
@@ -173,6 +175,7 @@ object IntruderCaptureManager {
         try {
             cameraManager.openCamera(frontCameraId, object : CameraDevice.StateCallback() {
                 override fun onOpened(camera: CameraDevice) {
+                    activeCamera = camera
                     try {
                         val captureBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE).apply {
                             addTarget(imageReader.surface)

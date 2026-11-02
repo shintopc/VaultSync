@@ -30,7 +30,8 @@ import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.*
+import androidx.compose.material.icons.automirrored.rounded.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.Icon
@@ -764,7 +765,7 @@ private fun MediaGalleryContent(
                         )
                         DropdownMenuItem(
                             text = { Text("Sort: ${state.sort.label}", color = Color.White) },
-                            leadingIcon = { Icon(Icons.Default.Sort, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp)) },
+                            leadingIcon = { Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp)) },
                             onClick = {
                                 isOverflowOpen = false
                                 val nextSort = when (state.sort) {
