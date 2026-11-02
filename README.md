@@ -20,6 +20,13 @@
 - **Complete Settings & Credentials Manager**: Manage/change Master PIN inside Settings with cryptographic VMK re-wrapping, direct vault shortcut, biometric KeyStore pairing, and PIN-protected recovery key viewing.
 - **Floating Multi-Window PiP**: Resizable multi-instance picture-in-picture media viewer.
 - **Two-Stage Secure Trash**: Isolated soft-delete staging with 30-day auto-purge and zero-fill shredding.
+- **In-Vault Recycle Bin & Auto-Purge**: Dedicated Trash tab inside the encrypted vault with real-time retention countdowns, individual restore/shred, and 30-day background auto-purge on unlock.
+- **Duress / Decoy PIN (Coercion Protection)**: Independent secondary PIN unlocking an authentic dummy vault to ensure plausible deniability without exposing real keys or files.
+- **Break-In Attempt Logger & Intruder Snapshot**: Quiet front-camera capture after 3 failed PIN attempts with a private, timestamped audit log.
+- **Direct In-Memory Video Decryption**: Native Jetpack Media3 `DataSource` streaming AES-256-GCM chunks directly in RAM for zero disk writes and instant playback.
+- **One-Click Encrypted Portable Backup (`.vsbackup`)**: SAF-powered export and restore of complete encrypted archives across devices or SD cards.
+- **Storage Optimizer & Deduplication Engine**: Two-tier fast scanner detecting duplicate files across vault albums with one-tap cleanup to reclaim storage.
+- **Emergency Deep Scan Blob Salvage & SAF Folder Picker**: Automatic raw `.vsf` blob reconstruction when manifests are missing, plus custom folder selection for external SD cards and OTG storage.
 
 📖 **For complete documentation and usage instructions, see [Complete User Guide](docs/VAULTSYNC_COMPLETE_USER_GUIDE.md).**
 

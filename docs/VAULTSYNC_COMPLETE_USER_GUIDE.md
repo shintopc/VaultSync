@@ -23,12 +23,20 @@ Welcome to **VaultSync**, a zero-cloud, hardware-encrypted, privacy-first multim
    - [3.6 Vault Batch Multi-Selection (Move Out, Move/Copy Folders & Permanent Delete)](#36-vault-batch-multi-selection-move-out-movecopy-folders--permanent-delete)
    - [3.7 Vault Password, PIN Management & Biometrics](#37-vault-password-pin-management--biometrics)
    - [3.8 Master Recovery Key (Anti-Lockout)](#38-master-recovery-key-anti-lockout)
+   - [3.9 In-Vault Recycle Bin & 30-Day Auto-Purge](#39-in-vault-recycle-bin--30-day-auto-purge)
+   - [3.10 Duress / Decoy PIN (Plausible Deniability & Coercion Protection)](#310-duress--decoy-pin-plausible-deniability--coercion-protection)
+   - [3.11 Break-In Attempt Logger & Intruder Snapshot](#311-break-in-attempt-logger--intruder-snapshot)
+   - [3.12 Direct In-Memory Video Decryption via Media3 DataSource (Zero Disk Write Wear)](#312-direct-in-memory-video-decryption-via-media3-datasource-zero-disk-write-wear)
+   - [3.13 One-Click Encrypted Portable Backup (.vsbackup Archive)](#313-one-click-encrypted-portable-backup-vsbackup-archive)
+   - [3.14 Storage Optimizer & Deduplication Engine](#314-storage-optimizer--deduplication-engine)
 4. [Shared Storage & Uninstall-Proof Vault Recovery](#4-shared-storage--uninstall-proof-vault-recovery)
    - [4.1 Storage Architecture & On-Disk Layout](#41-storage-architecture--on-disk-layout)
    - [4.2 Crash-Safe Migration Engine](#42-crash-safe-migration-engine)
    - [4.3 The Encrypted Vault Manifest (`vault_manifest.vsm`)](#43-the-encrypted-vault-manifest-vault_manifestvsm)
    - [4.4 Automatic Existing Vault Discovery & Recovery](#44-automatic-existing-vault-discovery--recovery)
    - [4.5 All Files Access (`MANAGE_EXTERNAL_STORAGE`)](#45-all-files-access-manage_external_storage)
+   - [4.6 Emergency Deep Scan Raw Blob Salvage & SAF Custom Directory Picker](#46-emergency-deep-scan-raw-blob-salvage--saf-custom-directory-picker)
+   - [4.7 Delayed Manifest Synchronization & Atomic Write-Locks](#47-delayed-manifest-synchronization--atomic-write-locks)
 5. [App Camouflage & Stealth Access](#5-app-camouflage--stealth-access)
    - [5.1 Launcher Appearance Modes & Crash-Safe Alias Switching](#51-launcher-appearance-modes--crash-safe-alias-switching)
    - [5.2 The Calculator Disguise (Pure Camouflage Security)](#52-the-calculator-disguise-pure-camouflage-security)
@@ -390,6 +398,90 @@ You can manage your master credentials directly from **Settings → Security & P
 
 ---
 
+### 3.9 In-Vault Recycle Bin & 30-Day Auto-Purge
+
+VaultSync features a true two-stage deletion architecture inside the encrypted vault:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    In-Vault Trash Lifecycle                     │
+├─────────────────┬───────────────────┬───────────────────────────┤
+│ Active Vault    │ Trashed Encrypted │ Permanent Shredding       │
+│ Albums & Audio  │ Staging (30 Days) │ (Cryptographic Zero-Fill) │
+└────────┬────────┴─────────┬─────────┴─────────────▲─────────────┘
+         │ Move to Trash    │                       │
+         └─────────────────►│                       │ 30-Day Expiry
+                            │                       │ or "Empty Trash"
+                            │ Restore to Active     │
+                            └───────────────────────┘
+```
+
+1. **Trash Isolation**: When deleting an encrypted file from the vault, it is marked as trashed (`is_trash = 1`) and stamped with a deletion timestamp. It is immediately hidden from Albums, Audio, and All Files views.
+2. **Dedicated Trash Tab**: Access the **Trash** tab on the top bar of the Secret Vault to review deleted items, inspect file sizes, and see real-time days remaining (e.g., `"28 days left"`).
+3. **Restoration**: Tap any trashed item to restore it back to its active vault folder with all metadata and original filenames intact.
+4. **Permanent Shredding**: Select individual items to shred them immediately, or tap **Empty Trash** to permanently overwrite and delete all trashed `.vsf` blobs from physical storage.
+5. **Background Auto-Purge**: Every time the vault is unlocked with your PIN or biometric, VaultSync checks for entries older than 30 days and permanently shreds them in the background.
+
+---
+
+### 3.10 Duress / Decoy PIN (Plausible Deniability & Coercion Protection)
+
+In high-risk scenarios where you are forced or coerced to unlock your phone, VaultSync provides complete **Plausible Deniability**:
+
+- **Decoy PIN Setup**: Open the Vault 3-dot menu (`⋮`) and select **Set Decoy PIN** to choose a secondary, independent numeric PIN.
+- **Independent Derivation**: The decoy PIN uses its own cryptographic salt and PBKDF2-HMAC-SHA256 verifier stored securely in `VaultCredentialStore`.
+- **Authentic Decoy Interface**: Entering the Decoy PIN at the Vault lock screen authenticates successfully and opens a clean, convincing, and completely empty dummy vault.
+- **Zero Real Key Exposure**: The real Vault Master Key (VMK) is never loaded, unwrap attempts on real keys are never initiated, and active encrypted media blobs remain completely invisible and unindexed.
+- **Management**: You can change or remove your Decoy PIN at any time from the Vault menu.
+
+---
+
+### 3.11 Break-In Attempt Logger & Intruder Snapshot
+
+VaultSync monitors unauthorized attempts to guess your Master PIN:
+
+- **Quiet Camera Capture**: After 3 consecutive failed PIN attempts, the app quietly captures a front-camera snapshot via Android Camera2 without triggering the camera app, preview screens, shutter sounds, or UI lag (when camera permission is granted).
+- **Incident Logging**: Records failed attempt timestamps, attempt counts, and the captured photo directly into an internal protected log file (`intruder_log.json`).
+- **Break-In Log Viewer**: Open the Vault menu (`⋮`) and select **Break-In Logs** to review a chronological history of unauthorized unlock attempts with embedded high-resolution snapshots.
+- **Privacy First**: Intruder photos are kept strictly inside the application's private sandbox and are never indexed by Android's public MediaStore or scanned by third-party apps.
+
+---
+
+### 3.12 Direct In-Memory Video Decryption via Media3 DataSource (Zero Disk Write Wear)
+
+Streaming high-definition video inside an encrypted vault traditionally requires writing unencrypted video files to temporary cache directories, which creates severe security leaks (forensic recovery) and causes premature SSD/UFS flash wear.
+
+VaultSync solves this with a native **In-Memory Streaming Media3 `DataSource`**:
+- **Chunk-Based On-The-Fly Decryption**: [`VaultMediaDataSource.kt`](file:///d:/vaultsync/app/src/main/java/com/vaultsync/core/media/VaultMediaDataSource.kt) intercepts ExoPlayer read requests and decrypts AES-256-GCM chunks directly into memory buffers.
+- **Random-Access Seeking**: Seamlessly computes chunk offsets and decodes specific video segments on demand when scrubbing backward or forward.
+- **Zero Disk Writes**: No decrypted bytes ever touch physical storage during video playback.
+- **Instantaneous Playback**: Eliminates disk write bottlenecks, allowing 4K/60fps video playback to begin immediately.
+
+---
+
+### 3.13 One-Click Encrypted Portable Backup (`.vsbackup` Archive)
+
+VaultSync makes moving your encrypted vault across devices, memory cards, or backup locations effortless:
+
+- **Unified ZIP Container**: Packages the encrypted catalog (`manifest.vsm`), backup catalog (`manifest.vsm.bak`), all encrypted media blobs (`blobs/*.vsf`), and verification metadata (`backup_metadata.json`) into a single `.vsbackup` file.
+- **Exporting Backup**: Tap `⋮ → Export Encrypted Backup` in the Vault to choose any destination folder via the Android Storage Access Framework (SAF) — internal storage, external SD cards, or connected USB OTG drives.
+- **Restoring Backup**: Tap `⋮ → Restore Encrypted Backup` on a new device or fresh install. VaultSync unpacks and verifies all blobs and manifests automatically.
+- **Zero Plaintext Exposure**: The archive contains only authenticated AES-256-GCM ciphertext blobs. It can be safely stored on cloud drives or shared storage without risking data exposure.
+
+---
+
+### 3.14 Storage Optimizer & Deduplication Engine
+
+Over time, importing duplicate photos, videos, or documents into different vault albums can consume substantial encrypted storage. VaultSync includes an integrated **Storage Optimizer**:
+
+- **Two-Tier Fast Scanner**:
+  1. **Phase 1 (O(N) Bucket Sort)**: Groups all active vault files by exact original byte size. Files with unique sizes are filtered out instantaneously.
+  2. **Phase 2 (Sample Hash Verification)**: Computes a fast SHA-256 hash across the initial 4KB of decrypted plaintext for candidate matches, verifying identical content without reading gigabytes of data.
+- **Interactive Review**: Open `⋮ → Storage Optimizer` to see duplicate groups, individual filenames, locations, and total wasted space in MB or GB.
+- **One-Tap Clean All Duplicates**: Automatically preserves the oldest original file and moves redundant duplicates into the In-Vault Trash Bin for review or permanent deletion.
+
+---
+
 ## 4. Shared Storage & Uninstall-Proof Vault Recovery
 
 Traditional Android private app storage (`/data/user/0/com.vaultsync.app/files/`) is wiped by the Android operating system whenever an app is uninstalled. VaultSync solves this with **Shared Storage Migration & Automatic Manifest-Driven Recovery**, allowing your encrypted vault to permanently survive app uninstalls, re-installations, and storage cleanups.
@@ -461,6 +553,15 @@ When you reinstall VaultSync after an uninstall or on a new setup:
 ### 4.5 All Files Access (`MANAGE_EXTERNAL_STORAGE`)
 - On Android 11+ (API 30+), accessing cross-reinstallation files in public `Documents/VaultSync/` requires Android's **All Files Access** permission.
 - If this permission is not yet granted, VaultSync displays a **"Permission Required"** card with a direct button to enable it in Android System Settings with one tap.
+
+### 4.6 Emergency Deep Scan Raw Blob Salvage & SAF Custom Directory Picker
+- **Emergency Deep-Scan Salvage**: In catastrophic recovery situations where `vault_manifest.vsm` is accidentally deleted, wiped by cleaner apps, or corrupted, VaultSync can perform an emergency raw scan across the storage directory. It locates all `.vsf` blobs, verifies header signatures, decrypts metadata with your Master PIN or Recovery Key, and automatically reconstructs a functioning database and manifest.
+- **Custom SAF Folder Picker**: If your encrypted vault is stored on an external SD card, custom partition, or connected OTG storage, tap **Choose Custom Folder** to point VaultSync directly to that folder using Android's system file picker.
+
+### 4.7 Delayed Manifest Synchronization & Atomic Write-Locks
+- **Atomic Disk Commits**: To guard against database or manifest corruption during sudden power loss or process kill, manifest saves write to a temporary file (`manifest.vsm.tmp`), perform an explicit hardware sync (`fsync`), and atomically replace `manifest.vsm`.
+- **Automatic Fallback Backup**: Every successful sync automatically archives the prior state to `manifest.vsm.bak`. If the primary manifest is ever damaged, VaultSync falls back seamlessly to the backup.
+- **Write-Lock Isolation**: Multi-threaded imports and batch operations utilize exclusive mutex locks to guarantee manifest consistency under rapid parallel writes.
 
 ---
 
