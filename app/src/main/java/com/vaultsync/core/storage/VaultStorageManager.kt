@@ -42,6 +42,9 @@ class VaultStorageManager(
     val manifestFile: File
         get() = File(vaultRoot, VaultManifest.MANIFEST_FILE_NAME)
 
+    val backupManifestFile: File
+        get() = File(vaultRoot, "${VaultManifest.MANIFEST_FILE_NAME}.bak")
+
     val migrationJournalFile: File
         get() = File(migrationJournalDir, MigrationJournalManager.JOURNAL_FILE_NAME)
 
@@ -116,12 +119,18 @@ class VaultStorageManager(
 
     fun isExistingVaultPresent(): Boolean {
         if (manifestFile.exists() && manifestFile.length() >= 32) return true
+        if (backupManifestFile.exists() && backupManifestFile.length() >= 32) return true
         context?.let { ctx ->
             val sharedDir = VaultStoragePreferences(ctx).getSharedStorageDirectory()
             val sharedManifest = File(sharedDir, VaultManifest.MANIFEST_FILE_NAME)
             if (sharedManifest.exists() && sharedManifest.length() >= 32) return true
+            val sharedBackup = File(sharedDir, "${VaultManifest.MANIFEST_FILE_NAME}.bak")
+            if (sharedBackup.exists() && sharedBackup.length() >= 32) return true
+
             val internalManifest = File(File(ctx.filesDir, "vault"), VaultManifest.MANIFEST_FILE_NAME)
             if (internalManifest.exists() && internalManifest.length() >= 32) return true
+            val internalBackup = File(File(ctx.filesDir, "vault"), "${VaultManifest.MANIFEST_FILE_NAME}.bak")
+            if (internalBackup.exists() && internalBackup.length() >= 32) return true
         }
         return false
     }

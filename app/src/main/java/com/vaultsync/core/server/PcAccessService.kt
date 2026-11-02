@@ -20,8 +20,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 /**
  * Foreground service that keeps the PC Access Ktor server, CPU, and Wi-Fi interface
@@ -40,6 +43,7 @@ class PcAccessService : Service() {
         createNotificationChannel()
         acquireLocks()
         observeServerState()
+        startInactivityAndQuotaMonitor()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -63,7 +67,7 @@ class PcAccessService : Service() {
                     "VaultSync:PcAccessWakeLock",
                 )?.apply {
                     setReferenceCounted(false)
-                    acquire()
+                    acquire(MAX_RUN_TIME_MS)
                 }
             }
         } catch (e: Exception) {
@@ -196,6 +200,61 @@ class PcAccessService : Service() {
             .launchIn(serviceScope)
     }
 
+    private fun startInactivityAndQuotaMonitor() {
+        serviceScope.launch {
+            val startTime = System.currentTimeMillis()
+            var lastActiveTime = System.currentTimeMillis()
+
+            while (isActive) {
+                delay(60_000L) // Check every 60 seconds
+                val manager = PcAccessManager.get(applicationContext)
+                val state = manager.state.value
+
+                if (state.activeSessionsCount > 0) {
+                    lastActiveTime = System.currentTimeMillis()
+                }
+
+                val now = System.currentTimeMillis()
+                val totalRuntime = now - startTime
+                val inactiveDuration = now - lastActiveTime
+
+                // 1. Quota guard: Max 4 hours continuous runtime (well below Android 14+ 6-hour dataSync quota limit)
+                // 2. Inactivity guard: 30 minutes without any active PC sessions
+                val isQuotaExceeded = totalRuntime >= MAX_RUN_TIME_MS
+                val isInactive = state.activeSessionsCount == 0 && inactiveDuration >= INACTIVITY_TIMEOUT_MS
+
+                if (isQuotaExceeded || isInactive) {
+                    val reason = if (isQuotaExceeded) {
+                        "PC Access paused after 4 hours to preserve battery and respect OS background limits."
+                    } else {
+                        "PC Access paused after 30 minutes of inactivity."
+                    }
+                    showTimeoutNotification(reason)
+                    manager.stopServer()
+                    stopSelf()
+                    break
+                }
+            }
+        }
+    }
+
+    private fun showTimeoutNotification(message: String) {
+        try {
+            val nm = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
+            val notif = NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("VaultSync — PC Access Standby")
+                .setContentText(message)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setAutoCancel(true)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .build()
+            nm.notify(TIMEOUT_NOTIFICATION_ID, notif)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         serviceScope.cancel()
@@ -209,6 +268,9 @@ class PcAccessService : Service() {
     companion object {
         const val CHANNEL_ID = "vaultsync_pc_access_channel"
         const val NOTIFICATION_ID = 8080
+        const val TIMEOUT_NOTIFICATION_ID = 8081
+        const val MAX_RUN_TIME_MS = 4 * 60 * 60 * 1000L // 4 hours maximum continuous runtime
+        const val INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000L // 30 minutes inactivity timeout
         const val ACTION_START = "com.vaultsync.action.START_PC_ACCESS"
         const val ACTION_STOP = "com.vaultsync.action.STOP_PC_ACCESS"
 

@@ -458,6 +458,7 @@ class VaultViewModel(
             try {
                 repository.createFolder(clean, _uiState.value.currentFolderId)
                 closeCreateFolderDialog()
+                syncManifestIfSharedStorage()
             } catch (e: Exception) {
                 _uiState.update { it.copy(errorMessage = "Could not create folder: ${e.message}") }
             }
@@ -474,6 +475,7 @@ class VaultViewModel(
             try {
                 repository.renameFolder(folderId, clean)
                 closeRenameFolderDialog()
+                syncManifestIfSharedStorage()
             } catch (e: Exception) {
                 _uiState.update { it.copy(errorMessage = "Could not rename folder: ${e.message}") }
             }
@@ -488,6 +490,7 @@ class VaultViewModel(
             try {
                 repository.moveFolder(folderId, newParentId)
                 closeMoveFolderDialog()
+                syncManifestIfSharedStorage()
             } catch (e: Exception) {
                 _uiState.update { it.copy(errorMessage = "Cannot move folder: ${e.message}") }
             }
@@ -502,6 +505,7 @@ class VaultViewModel(
             try {
                 repository.deleteFolder(folderId)
                 closeDeleteFolderDialog()
+                syncManifestIfSharedStorage()
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
@@ -523,6 +527,7 @@ class VaultViewModel(
             try {
                 repository.renameEntry(entryId, clean)
                 closeRenameEntryDialog()
+                syncManifestIfSharedStorage()
             } catch (e: Exception) {
                 _uiState.update { it.copy(errorMessage = "Could not rename file: ${e.message}") }
             }
@@ -537,6 +542,7 @@ class VaultViewModel(
             try {
                 repository.moveEntry(entryId, targetFolderId)
                 closeMoveEntryDialog()
+                syncManifestIfSharedStorage()
             } catch (e: Exception) {
                 _uiState.update { it.copy(errorMessage = "Cannot move file: ${e.message}") }
             }
@@ -554,6 +560,7 @@ class VaultViewModel(
                 }
                 closeCopyEntryDialog()
                 _uiState.update { it.copy(infoMessage = "File copied successfully.") }
+                syncManifestIfSharedStorage()
             } catch (e: Exception) {
                 _uiState.update { it.copy(errorMessage = "Cannot copy file: ${e.message}") }
             }
@@ -596,6 +603,7 @@ class VaultViewModel(
                 _thumbnailCache.update { it - entryId }
                 closeDeleteEntryDialog()
                 _uiState.update { it.copy(infoMessage = "File deleted successfully") }
+                syncManifestIfSharedStorage()
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
@@ -635,6 +643,7 @@ class VaultViewModel(
                 val count = selectedIds.size
                 clearSelection()
                 _uiState.update { it.copy(infoMessage = "Moved $count file(s)") }
+                syncManifestIfSharedStorage()
             } catch (e: Exception) {
                 _uiState.update { it.copy(errorMessage = "Move failed: ${e.message}") }
             }
@@ -654,6 +663,7 @@ class VaultViewModel(
                 val count = selectedIds.size
                 clearSelection()
                 _uiState.update { it.copy(infoMessage = "Copied $count file(s)") }
+                syncManifestIfSharedStorage()
             } catch (e: Exception) {
                 _uiState.update { it.copy(errorMessage = "Copy failed: ${e.message}") }
             }
@@ -676,6 +686,7 @@ class VaultViewModel(
                 val count = selectedIds.size
                 clearSelection()
                 _uiState.update { it.copy(infoMessage = "Deleted $count file(s)") }
+                syncManifestIfSharedStorage()
             } catch (e: Exception) {
                 _uiState.update { it.copy(errorMessage = "Delete failed: ${e.message}") }
             }
@@ -760,6 +771,9 @@ class VaultViewModel(
                     infoMessage = if (errorCount == 0) "Restored $successCount file(s) to gallery"
                     else "Restored $successCount file(s), $errorCount failed",
                 )
+            }
+            if (successCount > 0) {
+                syncManifestIfSharedStorage()
             }
         }
     }
@@ -932,6 +946,9 @@ class VaultViewModel(
                     } else null,
                 )
             }
+            if (successCount > 0) {
+                syncManifestIfSharedStorage()
+            }
         }
     }
 
@@ -1006,6 +1023,10 @@ class VaultViewModel(
                     errorMessage = if (successCount == 0 && failureCount > 0) message else null,
                     infoMessage = if (successCount > 0) message else null,
                 )
+            }
+
+            if (successCount > 0) {
+                syncManifestIfSharedStorage()
             }
 
             onFinished(successCount > 0, message)
@@ -1447,6 +1468,7 @@ class VaultViewModel(
                             errorMessage = null,
                         )
                     }
+                    syncManifestIfSharedStorage()
                     onResult(true, null)
                 } else {
                     _uiState.update { it.copy(errorMessage = result.errorMessage) }
@@ -1530,24 +1552,7 @@ class VaultViewModel(
 
     fun syncManifestIfSharedStorage() {
         viewModelScope.launch(Dispatchers.IO) {
-            val storagePrefs = com.vaultsync.core.storage.VaultStoragePreferences(getApplication())
-            if (storagePrefs.isSharedStorageEnabled && session.isUnlocked.value) {
-                try {
-                    session.withVmkSuspend { vmk ->
-                        val manifest = com.vaultsync.core.manifest.VaultManifestManager.createManifestFromCurrentVault(
-                            database = container.database,
-                            credentialStore = container.credentialStore,
-                            vmk = vmk,
-                        )
-                        com.vaultsync.core.manifest.VaultManifestManager.writeManifest(
-                            container.storageManager.manifestFile,
-                            manifest,
-                        )
-                    }
-                } catch (e: Exception) {
-                    android.util.Log.w("VaultViewModel", "Failed to sync manifest: ${e.message}")
-                }
-            }
+            container.syncManifest()
         }
     }
 }

@@ -84,16 +84,18 @@ fun DisguisedCalculatorScreen(
 
     fun onOperator(op: String) {
         val currentNum = displayValue.toDoubleOrNull() ?: 0.0
-        if (firstOperand == null) {
+        val op1 = firstOperand
+        val pending = pendingOperator
+        if (op1 == null) {
             firstOperand = currentNum
             expressionHistory = "${formatNumber(currentNum)} $op"
-        } else if (pendingOperator != null && !shouldResetInputOnNextDigit) {
-            val result = calculate(firstOperand!!, currentNum, pendingOperator!!)
+        } else if (pending != null && !shouldResetInputOnNextDigit) {
+            val result = calculate(op1, currentNum, pending)
             firstOperand = result
             displayValue = formatNumber(result)
             expressionHistory = "${formatNumber(result)} $op"
         } else {
-            expressionHistory = "${formatNumber(firstOperand!!)} $op"
+            expressionHistory = "${formatNumber(op1)} $op"
         }
         pendingOperator = op
         shouldResetInputOnNextDigit = true
@@ -101,10 +103,12 @@ fun DisguisedCalculatorScreen(
 
     fun onEquals() {
         // Perform standard calculator evaluation only
-        if (firstOperand != null && pendingOperator != null) {
+        val op1 = firstOperand
+        val pending = pendingOperator
+        if (op1 != null && pending != null) {
             val secondNum = displayValue.toDoubleOrNull() ?: 0.0
-            val result = calculate(firstOperand!!, secondNum, pendingOperator!!)
-            expressionHistory = "${formatNumber(firstOperand!!)} $pendingOperator ${formatNumber(secondNum)} ="
+            val result = calculate(op1, secondNum, pending)
+            expressionHistory = "${formatNumber(op1)} $pending ${formatNumber(secondNum)} ="
             displayValue = formatNumber(result)
             firstOperand = null
             pendingOperator = null

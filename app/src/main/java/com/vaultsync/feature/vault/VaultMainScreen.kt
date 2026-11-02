@@ -138,9 +138,12 @@ fun VaultMainScreen(
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("*/*"),
     ) { uri: Uri? ->
-        if (uri != null && entryToExport != null) {
-            viewModel.exportEntry(entryToExport!!, uri, context.contentResolver)
+        val target = entryToExport
+        if (uri != null && target != null) {
+            viewModel.exportEntry(target, uri, context.contentResolver)
             entryToExport = null
+        } else if (uri != null) {
+            android.widget.Toast.makeText(context, "Export session expired. Please select the file again.", android.widget.Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -779,10 +782,11 @@ fun VaultMainScreen(
     }
 
     // Fullscreen interactive media viewer with horizontal swiping between photos/videos
-    if (uiState.activeViewerIndex != null && uiState.activeViewerItems.isNotEmpty()) {
+    val activeViewerIndex = uiState.activeViewerIndex
+    if (activeViewerIndex != null && uiState.activeViewerItems.isNotEmpty()) {
         VaultFullscreenMediaViewer(
             items = uiState.activeViewerItems,
-            initialIndex = uiState.activeViewerIndex!!,
+            initialIndex = activeViewerIndex,
             viewModel = viewModel,
             onDismiss = { viewModel.closeViewer() },
             onExportClick = { entry ->

@@ -58,6 +58,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -829,14 +830,26 @@ fun VaultFullscreenMediaViewer(
 
     val currentItem = items.getOrNull(pagerState.currentPage) ?: items.firstOrNull()
 
-    // Decrypted files cache for adjacent items in memory
+    // Decrypted files cache for adjacent items in memory with sliding window LRU eviction
     var decryptedFiles by remember { mutableStateOf<Map<String, File>>(emptyMap()) }
     var decryptingIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var decryptError by remember { mutableStateOf<String?>(null) }
+    val currentDecryptedFiles by rememberUpdatedState(decryptedFiles)
 
     LaunchedEffect(pagerState.currentPage, items) {
         val currentPage = pagerState.currentPage
         val targetIndices = listOf(currentPage, currentPage + 1, currentPage - 1).filter { it in items.indices }
+
+        // Evict cached files outside the 5-item sliding window (currentPage ± 2) to prevent unbounded storage usage
+        val validWindowIndices = (currentPage - 2..currentPage + 2).filter { it in items.indices }
+        val validWindowIds = validWindowIndices.map { items[it].id }.toSet()
+        val evicted = decryptedFiles.filterKeys { id -> id !in validWindowIds }
+        if (evicted.isNotEmpty()) {
+            evicted.values.forEach { file ->
+                try { file.delete() } catch (_: Exception) {}
+            }
+            decryptedFiles = decryptedFiles.filterKeys { id -> id in validWindowIds }
+        }
 
         for (idx in targetIndices) {
             val entry = items[idx]
@@ -858,7 +871,7 @@ fun VaultFullscreenMediaViewer(
 
     DisposableEffect(Unit) {
         onDispose {
-            decryptedFiles.values.forEach { file ->
+            currentDecryptedFiles.values.forEach { file ->
                 try { file.delete() } catch (_: Exception) {}
             }
         }

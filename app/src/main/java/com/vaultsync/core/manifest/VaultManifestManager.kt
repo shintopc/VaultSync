@@ -22,6 +22,7 @@ object VaultManifestManager {
         parent.mkdirs()
 
         val tempFile = File(parent, "${manifestFile.name}.${UUID.randomUUID()}.tmp")
+        val backupFile = File(parent, "${manifestFile.name}.bak")
         try {
             val bytes = VaultManifestSerializer.serializeManifest(manifest)
             FileOutputStream(tempFile).use { fos ->
@@ -34,9 +35,16 @@ object VaultManifestManager {
                 }
             }
 
-            if (manifestFile.exists()) {
-                manifestFile.delete()
+            // Step 1: Back up existing valid manifest before replacing
+            if (manifestFile.exists() && manifestFile.length() >= 32) {
+                try {
+                    manifestFile.copyTo(backupFile, overwrite = true)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to create backup copy of manifest: ${e.message}")
+                }
             }
+
+            // Step 2: Atomic move/overwrite of tempFile to manifestFile
             if (!tempFile.renameTo(manifestFile)) {
                 tempFile.copyTo(manifestFile, overwrite = true)
                 tempFile.delete()
@@ -50,16 +58,35 @@ object VaultManifestManager {
     }
 
     fun readManifest(manifestFile: File): VaultManifest? {
-        if (!manifestFile.exists() || manifestFile.length() < 32) {
-            return null
+        // Try reading the primary manifest file first
+        if (manifestFile.exists() && manifestFile.length() >= 32) {
+            try {
+                val bytes = manifestFile.readBytes()
+                return VaultManifestSerializer.deserializeManifest(bytes)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to read primary vault manifest from ${manifestFile.absolutePath}: ${e.message}")
+            }
         }
-        return try {
-            val bytes = manifestFile.readBytes()
-            VaultManifestSerializer.deserializeManifest(bytes)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to read vault manifest from ${manifestFile.absolutePath}: ${e.message}")
-            null
+
+        // Fallback: If primary is missing or corrupted, attempt to recover from .bak backup file
+        val parent = manifestFile.parentFile ?: return null
+        val backupFile = File(parent, "${manifestFile.name}.bak")
+        if (backupFile.exists() && backupFile.length() >= 32) {
+            try {
+                Log.w(TAG, "Attempting recovery using backup manifest from ${backupFile.absolutePath}")
+                val bytes = backupFile.readBytes()
+                val manifest = VaultManifestSerializer.deserializeManifest(bytes)
+                // Self-heal: restore primary manifest file from valid backup
+                try {
+                    backupFile.copyTo(manifestFile, overwrite = true)
+                } catch (_: Exception) {}
+                return manifest
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to read backup vault manifest from ${backupFile.absolutePath}: ${e.message}")
+            }
         }
+
+        return null
     }
 
     suspend fun createManifestFromCurrentVault(

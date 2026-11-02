@@ -193,4 +193,67 @@ class VaultManifestTest {
             )
         }
     }
+
+    @Test
+    fun testAtomicManifestWriteAndBackupFallback() {
+        val tempDir = java.nio.file.Files.createTempDirectory("manifest_test").toFile()
+        try {
+            val manifestFile = java.io.File(tempDir, VaultManifest.MANIFEST_FILE_NAME)
+            val backupFile = java.io.File(tempDir, "${VaultManifest.MANIFEST_FILE_NAME}.bak")
+
+            val vmk = VaultKeyManager.generateVaultMasterKey()
+            val pin = "1234".toCharArray()
+            val pinWrapped = VaultKeyManager.wrapVaultMasterKey(vmk, pin)
+
+            val catalog1 = VaultCatalog(emptyList(), emptyList())
+            val (nonce1, ct1) = VaultManifestSerializer.encryptCatalog(catalog1, vmk, "vault-1")
+            val manifest1 = VaultManifest(
+                vaultId = "vault-1",
+                createdAtMillis = 1000L,
+                updatedAtMillis = 1000L,
+                wrappedVmkWithPin = pinWrapped,
+                wrappedVmkWithRecoveryKey = null,
+                catalogNonce = nonce1,
+                encryptedCatalog = ct1,
+            )
+
+            // 1. Initial write
+            VaultManifestManager.writeManifest(manifestFile, manifest1)
+            assertTrue("Primary manifest file must exist", manifestFile.exists())
+            val loaded1 = VaultManifestManager.readManifest(manifestFile)
+            assertNotNull(loaded1)
+            assertEquals("vault-1", loaded1?.vaultId)
+
+            // 2. Second write should automatically create backup copy of previous manifest
+            val (nonce2, ct2) = VaultManifestSerializer.encryptCatalog(catalog1, vmk, "vault-2")
+            val manifest2 = VaultManifest(
+                vaultId = "vault-2",
+                createdAtMillis = 1000L,
+                updatedAtMillis = 2000L,
+                wrappedVmkWithPin = pinWrapped,
+                wrappedVmkWithRecoveryKey = null,
+                catalogNonce = nonce2,
+                encryptedCatalog = ct2,
+            )
+            VaultManifestManager.writeManifest(manifestFile, manifest2)
+            assertTrue("Backup file must exist after second write", backupFile.exists())
+            val loaded2 = VaultManifestManager.readManifest(manifestFile)
+            assertEquals("vault-2", loaded2?.vaultId)
+
+            // 3. Delete primary manifest: readManifest must fall back to .bak and restore primary
+            manifestFile.delete()
+            val fallbackLoaded = VaultManifestManager.readManifest(manifestFile)
+            assertNotNull("Must successfully recover from backup", fallbackLoaded)
+            assertEquals("vault-1", fallbackLoaded?.vaultId)
+            assertTrue("Primary manifest file must be self-healed", manifestFile.exists())
+
+            // 4. Corrupt primary manifest: readManifest must recover from valid .bak
+            manifestFile.writeBytes(byteArrayOf(0, 1, 2, 3, 4, 5, 6, 7))
+            val recoveredFromCorrupt = VaultManifestManager.readManifest(manifestFile)
+            assertNotNull("Must recover from backup when primary is corrupted", recoveredFromCorrupt)
+            assertEquals("vault-1", recoveredFromCorrupt?.vaultId)
+        } finally {
+            tempDir.deleteRecursively()
+        }
+    }
 }

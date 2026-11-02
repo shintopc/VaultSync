@@ -557,6 +557,7 @@ class MediaViewModel(
             }
 
             if (successCount > 0) {
+                vaultContainer.syncManifest()
                 onResult(true, "Successfully imported $successCount file(s) into vault${if (failCount > 0) " ($failCount failed)" else ""}")
             } else {
                 onResult(false, "Failed to import selected files into vault")

@@ -69,7 +69,14 @@ object VaultRecoveryManager {
         }
 
         val manifestFile = File(vaultDir, VaultManifest.MANIFEST_FILE_NAME)
-        if (!manifestFile.exists() || manifestFile.length() < 32) {
+        val backupFile = File(vaultDir, "${VaultManifest.MANIFEST_FILE_NAME}.bak")
+        val effectiveManifestFile = when {
+            manifestFile.exists() && manifestFile.length() >= 32 -> manifestFile
+            backupFile.exists() && backupFile.length() >= 32 -> backupFile
+            else -> null
+        }
+
+        if (effectiveManifestFile == null) {
             // Check if blobs exist without manifest
             val blobsDir = File(vaultDir, "blobs")
             val blobCount = blobsDir.listFiles { _, name -> name.endsWith(".vsf") }?.size ?: 0
@@ -81,7 +88,7 @@ object VaultRecoveryManager {
         }
 
         return try {
-            val manifest = VaultManifestManager.readManifest(manifestFile)
+            val manifest = VaultManifestManager.readManifest(effectiveManifestFile)
                 ?: return VaultDiscoveryResult.Corrupted(vaultDir, "Failed to parse vault_manifest.vsm")
             val blobsDir = File(vaultDir, "blobs")
             val blobCount = blobsDir.listFiles { _, name -> name.endsWith(".vsf") }?.size ?: 0
