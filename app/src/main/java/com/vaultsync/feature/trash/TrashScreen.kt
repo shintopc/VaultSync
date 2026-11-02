@@ -28,6 +28,12 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.DeleteForever
+import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -35,6 +41,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -108,11 +115,10 @@ fun TrashScreen(
                             }
                         },
                     ) {
-                        Text(
-                            text = if (uiState.hasSelection) "✕" else "←",
-                            fontSize = 22.sp,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
+                        Icon(
+                            imageVector = if (uiState.hasSelection) Icons.Rounded.Close else Icons.AutoMirrored.Rounded.ArrowBack,
+                            contentDescription = if (uiState.hasSelection) "Clear selection" else "Back",
+                            tint = Color.White,
                         )
                     }
                 },
@@ -173,7 +179,18 @@ fun TrashScreen(
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2C2C2E)),
                             shape = RoundedCornerShape(12.dp),
                         ) {
-                            Text("🔄 Restore (${uiState.selectedIds.size})", color = Color.White, fontWeight = FontWeight.SemiBold)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Restore,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(17.dp),
+                                )
+                                Text("Restore (${uiState.selectedIds.size})", color = Color.White, fontWeight = FontWeight.SemiBold)
+                            }
                         }
 
                         // Delete Permanently Button
@@ -182,7 +199,18 @@ fun TrashScreen(
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                             shape = RoundedCornerShape(12.dp),
                         ) {
-                            Text("❌ Delete Permanently", color = Color.White, fontWeight = FontWeight.SemiBold)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.DeleteForever,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(17.dp),
+                                )
+                                Text("Delete Permanently", color = Color.White, fontWeight = FontWeight.SemiBold)
+                            }
                         }
                     }
                 }
@@ -210,12 +238,18 @@ fun TrashScreen(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(80.dp)
+                            .size(88.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFF1C1C1E)),
+                            .background(Color(0xFF1C1C1E))
+                            .border(1.dp, Color.White.copy(alpha = 0.15f), CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text("♻️", fontSize = 38.sp)
+                        Icon(
+                            imageVector = Icons.Rounded.DeleteOutline,
+                            contentDescription = null,
+                            tint = Color(0xFF8E8E93),
+                            modifier = Modifier.size(40.dp),
+                        )
                     }
                     Spacer(modifier = Modifier.height(20.dp))
                     Text(
@@ -464,7 +498,18 @@ fun TrashScreen(
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.weight(1f),
                         ) {
-                            Text("🔄 Restore", color = Color.White)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Restore,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Text("Restore", color = Color.White)
+                            }
                         }
 
                         // Delete Permanently Button
@@ -482,7 +527,18 @@ fun TrashScreen(
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.weight(1f),
                         ) {
-                            Text("❌ Delete Permanently", color = Color.White)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.DeleteForever,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Text("Delete Permanently", color = Color.White)
+                            }
                         }
                     }
                 }

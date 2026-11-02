@@ -12,12 +12,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Inventory2
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -70,7 +74,12 @@ fun VaultMigrationDialog(
                 modifier = Modifier.padding(24.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("📦", fontSize = 28.sp)
+                    Icon(
+                        imageVector = Icons.Rounded.Inventory2,
+                        contentDescription = null,
+                        tint = Color(0xFF38BDF8),
+                        modifier = Modifier.size(28.dp),
+                    )
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(

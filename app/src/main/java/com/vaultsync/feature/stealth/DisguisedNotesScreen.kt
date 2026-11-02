@@ -14,9 +14,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -118,7 +122,7 @@ fun DisguisedNotesScreen(
                         .clickable { isEditMode = !isEditMode },
                 ) {
                     Text(
-                        text = if (isEditMode) "Done" else "📝 Edit",
+                        text = if (isEditMode) "Done" else "Edit",
                         color = Color(0xFFFFD60A),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
@@ -127,14 +131,22 @@ fun DisguisedNotesScreen(
             }
 
             // Search Bar Mock
-            Box(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Color(0xFF1C1C1E), RoundedCornerShape(12.dp))
                     .padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                Icon(
+                    imageVector = Icons.Rounded.Search,
+                    contentDescription = null,
+                    tint = Color(0xFF636366),
+                    modifier = Modifier.size(18.dp),
+                )
                 Text(
-                    text = "🔍 Search notes...",
+                    text = "Search notes...",
                     color = Color(0xFF636366),
                     fontSize = 15.sp,
                 )

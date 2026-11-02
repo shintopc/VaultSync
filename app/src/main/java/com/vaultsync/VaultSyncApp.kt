@@ -16,9 +16,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.LockOpen
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -94,7 +98,7 @@ fun VaultSyncApp(
                             isTwoFingerGestureEnabled = true,
                             gestureType = stealthPrefs.gestureType,
                             onSecretAccessTriggered = {
-                                Toast.makeText(context, "Welcome to Main Gallery 🖼️", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Main Gallery Unlocked", Toast.LENGTH_SHORT).show()
                                 AppLockManager.setUnlockedDirectly()
                             },
                         )
@@ -104,7 +108,7 @@ fun VaultSyncApp(
                             isTwoFingerGestureEnabled = true,
                             gestureType = stealthPrefs.gestureType,
                             onSecretAccessTriggered = {
-                                Toast.makeText(context, "Welcome to Main Gallery 🖼️", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Main Gallery Unlocked", Toast.LENGTH_SHORT).show()
                                 AppLockManager.setUnlockedDirectly()
                             },
                         )
@@ -250,7 +254,12 @@ fun VaultSyncApp(
                         modifier = Modifier.padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("🔓", fontSize = 20.sp)
+                        Icon(
+                            imageVector = Icons.Rounded.LockOpen,
+                            contentDescription = "Stealth Active",
+                            tint = Color(0xFF30D158),
+                            modifier = Modifier.size(20.dp),
+                        )
                         Spacer(modifier = Modifier.width(10.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(

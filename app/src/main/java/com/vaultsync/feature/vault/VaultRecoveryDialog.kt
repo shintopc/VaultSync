@@ -27,7 +27,10 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -118,7 +121,12 @@ fun RecoveryKeyDisplayDialog(
                         .background(Color(0xFF2C2C2E)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("🔑", fontSize = 28.sp)
+                    Icon(
+                        imageVector = Icons.Rounded.Key,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(28.dp),
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -195,7 +203,18 @@ fun RecoveryKeyDisplayDialog(
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.weight(1f),
                     ) {
-                        Text("📋 Copy Key", color = Color.White, fontSize = 13.sp)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.ContentCopy,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Text("Copy Key", color = Color.White, fontSize = 13.sp)
+                        }
                     }
 
                     // Save to File using Android Save Dialog (SAF)
@@ -211,7 +230,18 @@ fun RecoveryKeyDisplayDialog(
                         if (isSaving) {
                             CircularProgressIndicator(color = Color.White, modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                         } else {
-                            Text("💾 Save File", color = Color.White, fontSize = 13.sp)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.SaveAlt,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                                Text("Save File", color = Color.White, fontSize = 13.sp)
+                            }
                         }
                     }
                 }
@@ -302,7 +332,12 @@ fun ForgotPinRecoveryDialog(
                         .background(Color(0xFF2C2C2E)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(if (isVerified) "🛡️" else "🔑", fontSize = 28.sp)
+                    Icon(
+                        imageVector = if (isVerified) Icons.Rounded.Shield else Icons.Rounded.Key,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(28.dp),
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(14.dp))
@@ -366,7 +401,12 @@ fun ForgotPinRecoveryDialog(
                                     Toast.makeText(context, "Pasted from clipboard", Toast.LENGTH_SHORT).show()
                                 }
                             }) {
-                                Text("📋", fontSize = 18.sp)
+                                Icon(
+                                    imageVector = Icons.Rounded.ContentPaste,
+                                    contentDescription = "Paste",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp),
+                                )
                             }
                         },
                         colors = OutlinedTextFieldDefaults.colors(
@@ -391,7 +431,18 @@ fun ForgotPinRecoveryDialog(
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("📁 Select Saved Key File (.txt)", color = Color.White, fontSize = 13.sp)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.FolderOpen,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Text("Select Saved Key File (.txt)", color = Color.White, fontSize = 13.sp)
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(20.dp))

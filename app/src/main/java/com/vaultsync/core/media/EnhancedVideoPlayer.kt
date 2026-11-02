@@ -11,10 +11,12 @@ import android.view.WindowManager
 import android.widget.FrameLayout
 import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -36,8 +38,27 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.VolumeOff
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
+import androidx.compose.material.icons.rounded.BrightnessHigh
+import androidx.compose.material.icons.rounded.BrightnessLow
+import androidx.compose.material.icons.rounded.BrightnessMedium
+import androidx.compose.material.icons.rounded.CropFree
+import androidx.compose.material.icons.rounded.FitScreen
+import androidx.compose.material.icons.rounded.Forward10
+import androidx.compose.material.icons.rounded.Nightlight
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Repeat
+import androidx.compose.material.icons.rounded.RepeatOne
+import androidx.compose.material.icons.rounded.Replay10
+import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.StayCurrentLandscape
+import androidx.compose.material.icons.rounded.StayCurrentPortrait
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -59,12 +80,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -78,6 +102,8 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.vaultsync.R
+import com.vaultsync.core.designsystem.RotaryBrightnessDial
+import com.vaultsync.core.designsystem.ZoomResetChip
 import com.vaultsync.core.floating.RotateMediaIcon
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -120,6 +146,7 @@ fun EnhancedVideoPlayer(
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
     val coroutineScope = rememberCoroutineScope()
+    val haptic = LocalHapticFeedback.current
 
     var isPlaying by remember { mutableStateOf(false) }
     var currentPosition by remember { mutableLongStateOf(0L) }
@@ -134,7 +161,7 @@ fun EnhancedVideoPlayer(
 
     // Speed & Audio States
     var playbackSpeed by remember { mutableFloatStateOf(1.0f) }
-    var showSpeedDialog by remember { mutableStateOf(false) }
+    var showSpeedSelector by remember { mutableStateOf(false) }
     var isMuted by remember { mutableStateOf(false) }
 
     // Repeat / Loop Playback State
@@ -143,7 +170,7 @@ fun EnhancedVideoPlayer(
     // Aspect Ratio Fit Mode
     var resizeMode by remember { mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT) }
 
-    // Quick-tap feedback badges
+    // Quick-tap feedback badges & status messages
     var showRewindBadge by remember { mutableStateOf(false) }
     var showForwardBadge by remember { mutableStateOf(false) }
     var modeFeedbackText by remember { mutableStateOf<String?>(null) }
@@ -169,7 +196,7 @@ fun EnhancedVideoPlayer(
     var brightness by remember { mutableFloatStateOf(initialSysBrightness) }
     var isBrightnessDragging by remember { mutableStateOf(false) }
     var showBrightnessBadge by remember { mutableStateOf(false) }
-    var showBrightnessSlider by remember { mutableStateOf(false) }
+    var showBrightnessDial by remember { mutableStateOf(false) }
 
     fun updateBrightness(newVal: Float) {
         val clamped = newVal.coerceIn(0.01f, 1.0f)
@@ -277,8 +304,8 @@ fun EnhancedVideoPlayer(
     }
 
     // Auto-hide controls after 3.5 seconds of inactivity when playing
-    LaunchedEffect(showControls, isPlaying, isScrubbing, showSpeedDialog, showBrightnessSlider) {
-        if (showControls && isPlaying && !isScrubbing && !showSpeedDialog && !showBrightnessSlider) {
+    LaunchedEffect(showControls, isPlaying, isScrubbing, showSpeedSelector, showBrightnessDial) {
+        if (showControls && isPlaying && !isScrubbing && !showSpeedSelector && !showBrightnessDial) {
             delay(3500)
             onToggleControls()
         }
@@ -603,8 +630,8 @@ fun EnhancedVideoPlayer(
         ) {
             Surface(
                 shape = RoundedCornerShape(20.dp),
-                color = Color.Black.copy(alpha = 0.82f),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)),
+                color = Color.Black.copy(alpha = 0.85f),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
                 shadowElevation = 8.dp,
             ) {
                 Column(
@@ -612,9 +639,22 @@ fun EnhancedVideoPlayer(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text(
-                        text = if (brightness > 0.6f) "☀️" else if (brightness > 0.25f) "🌤️" else "🌙",
-                        fontSize = 20.sp,
+                    val icon = when {
+                        brightness < 0.20f -> Icons.Rounded.Nightlight
+                        brightness < 0.50f -> Icons.Rounded.BrightnessLow
+                        brightness < 0.80f -> Icons.Rounded.BrightnessMedium
+                        else -> Icons.Rounded.BrightnessHigh
+                    }
+                    val iconTint = when {
+                        brightness < 0.20f -> Color(0xFF90CAF9)
+                        brightness < 0.50f -> Color(0xFFFFE082)
+                        else -> Color(0xFFFFB300)
+                    }
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = "Brightness level",
+                        tint = iconTint,
+                        modifier = Modifier.size(22.dp),
                     )
                     // Vertical Progress Bar
                     Box(
@@ -630,7 +670,7 @@ fun EnhancedVideoPlayer(
                                 .fillMaxWidth()
                                 .height(100.dp * brightness)
                                 .clip(RoundedCornerShape(3.dp))
-                                .background(MaterialTheme.colorScheme.primary),
+                                .background(iconTint),
                         )
                     }
                     Text(
@@ -655,16 +695,28 @@ fun EnhancedVideoPlayer(
             Box(
                 modifier = Modifier
                     .clip(CircleShape)
-                    .background(Color.Black.copy(alpha = 0.75f))
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .background(Color.Black.copy(alpha = 0.82f))
+                    .border(1.dp, Color.White.copy(alpha = 0.25f), CircleShape)
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = "⏪ -10s",
-                    color = Color.White,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Replay10,
+                        contentDescription = "Rewind 10 seconds",
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Text(
+                        text = "-10s",
+                        color = Color.White,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
             }
         }
 
@@ -680,16 +732,28 @@ fun EnhancedVideoPlayer(
             Box(
                 modifier = Modifier
                     .clip(CircleShape)
-                    .background(Color.Black.copy(alpha = 0.75f))
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .background(Color.Black.copy(alpha = 0.82f))
+                    .border(1.dp, Color.White.copy(alpha = 0.25f), CircleShape)
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = "+10s ⏩",
-                    color = Color.White,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        text = "+10s",
+                        color = Color.White,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Icon(
+                        imageVector = Icons.Rounded.Forward10,
+                        contentDescription = "Forward 10 seconds",
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
             }
         }
 
@@ -721,29 +785,17 @@ fun EnhancedVideoPlayer(
         }
 
         // 6. Zoom Level Indicator & Quick Reset Chip (shows when zoomed)
-        if (scale > 1.05f) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 80.dp, end = 16.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color.Black.copy(alpha = 0.75f))
-                    .border(1.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
-                    .clickable {
-                        scale = 1f
-                        offset = Offset.Zero
-                        onZoomChanged(false)
-                    }
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
-            ) {
-                Text(
-                    text = "🔍 ${"%.1f".format(scale)}x  ✕ Reset",
-                    color = Color.White,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
-        }
+        ZoomResetChip(
+            scale = scale,
+            onReset = {
+                scale = 1f
+                offset = Offset.Zero
+                onZoomChanged(false)
+            },
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 80.dp, end = 16.dp),
+        )
 
         // 7. Interactive On-Screen Playback Controls Overlay
         AnimatedVisibility(
@@ -763,33 +815,42 @@ fun EnhancedVideoPlayer(
                 // Center Transport Controls (Rewind 10s, Play/Pause, Forward 10s)
                 Row(
                     modifier = Modifier.align(Alignment.Center),
-                    horizontalArrangement = Arrangement.spacedBy(28.dp),
+                    horizontalArrangement = Arrangement.spacedBy(32.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     // Rewind 10s Button
-                    Box(
+                    Surface(
                         modifier = Modifier
-                            .size(46.dp)
+                            .size(50.dp)
                             .clip(CircleShape)
-                            .background(Color.Black.copy(alpha = 0.65f))
-                            .border(1.dp, Color.White.copy(alpha = 0.25f), CircleShape)
                             .clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 val newPos = (exoPlayer.currentPosition - 10000L).coerceAtLeast(0L)
                                 exoPlayer.seekTo(newPos)
                                 currentPosition = newPos
                             },
-                        contentAlignment = Alignment.Center,
+                        shape = CircleShape,
+                        color = Color.Black.copy(alpha = 0.65f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
                     ) {
-                        Text("⏪", fontSize = 18.sp)
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Rounded.Replay10,
+                                contentDescription = "Rewind 10 seconds",
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp),
+                            )
+                        }
                     }
 
                     // Main Play / Pause Circle Button
-                    Box(
+                    Surface(
                         modifier = Modifier
-                            .size(66.dp)
+                            .size(68.dp)
+                            .shadow(12.dp, CircleShape)
                             .clip(CircleShape)
-                            .background(Color.White)
                             .clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 if (exoPlayer.playbackState == Player.STATE_ENDED) {
                                     exoPlayer.seekTo(0L)
                                     exoPlayer.play()
@@ -799,37 +860,50 @@ fun EnhancedVideoPlayer(
                                     exoPlayer.play()
                                 }
                             },
-                        contentAlignment = Alignment.Center,
+                        shape = CircleShape,
+                        color = Color.White,
                     ) {
-                        Text(
-                            text = if (isPlaying) "⏸" else "▶",
-                            color = Color.Black,
-                            fontSize = 28.sp,
-                        )
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                                contentDescription = if (isPlaying) "Pause" else "Play",
+                                tint = Color.Black,
+                                modifier = Modifier.size(36.dp),
+                            )
+                        }
                     }
 
                     // Forward 10s Button
-                    Box(
+                    Surface(
                         modifier = Modifier
-                            .size(46.dp)
+                            .size(50.dp)
                             .clip(CircleShape)
-                            .background(Color.Black.copy(alpha = 0.65f))
-                            .border(1.dp, Color.White.copy(alpha = 0.25f), CircleShape)
                             .clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 val newPos = (exoPlayer.currentPosition + 10000L).coerceAtMost(duration)
                                 exoPlayer.seekTo(newPos)
                                 currentPosition = newPos
                             },
-                        contentAlignment = Alignment.Center,
+                        shape = CircleShape,
+                        color = Color.Black.copy(alpha = 0.65f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
                     ) {
-                        Text("⏩", fontSize = 18.sp)
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Rounded.Forward10,
+                                contentDescription = "Forward 10 seconds",
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp),
+                            )
+                        }
                     }
                 }
 
-                // Bottom Controls Card: Scrubber Bar, Speed, Rotation, Fit Mode, Repeat, Volume
+                // Bottom Controls Card: Scrubber Bar, Speed Carousel, Action Chips
                 Surface(
-                    color = Color(0xFF141414).copy(alpha = 0.92f),
-                    shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+                    color = Color(0xFF141414).copy(alpha = 0.94f),
+                    shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(bottom = bottomPadding)
@@ -838,7 +912,7 @@ fun EnhancedVideoPlayer(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
                     ) {
                         // Time Scrubber Row
                         val displayPos = if (isScrubbing) scrubPosition else currentPosition
@@ -850,7 +924,7 @@ fun EnhancedVideoPlayer(
                                 text = formatDuration(displayPos),
                                 color = Color.White,
                                 fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium,
+                                fontWeight = FontWeight.SemiBold,
                             )
 
                             Slider(
@@ -866,64 +940,57 @@ fun EnhancedVideoPlayer(
                                 },
                                 modifier = Modifier
                                     .weight(1f)
-                                    .padding(horizontal = 8.dp),
+                                    .padding(horizontal = 10.dp),
                                 colors = SliderDefaults.colors(
                                     thumbColor = MaterialTheme.colorScheme.primary,
                                     activeTrackColor = MaterialTheme.colorScheme.primary,
-                                    inactiveTrackColor = Color.DarkGray,
+                                    inactiveTrackColor = Color.White.copy(alpha = 0.2f),
                                 ),
                             )
 
                             Text(
                                 text = formatDuration(duration),
-                                color = Color(0xFFA0A0A0),
+                                color = Color.White.copy(alpha = 0.6f),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
                             )
                         }
 
-                        // Expandable Brightness Slider Row
+                        // Inline Speed Selector Carousel
                         AnimatedVisibility(
-                            visible = showBrightnessSlider,
-                            enter = fadeIn(),
-                            exit = fadeOut(),
+                            visible = showSpeedSelector,
+                            enter = fadeIn() + expandVertically(),
+                            exit = fadeOut() + shrinkVertically(),
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
+                                    .horizontalScroll(rememberScrollState())
+                                    .padding(vertical = 6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Text("🌙", fontSize = 13.sp)
-                                Slider(
-                                    value = brightness,
-                                    onValueChange = { newVal -> updateBrightness(newVal) },
-                                    valueRange = 0.01f..1.0f,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .padding(horizontal = 8.dp),
-                                    colors = SliderDefaults.colors(
-                                        thumbColor = MaterialTheme.colorScheme.primary,
-                                        activeTrackColor = MaterialTheme.colorScheme.primary,
-                                        inactiveTrackColor = Color.DarkGray,
-                                    ),
-                                )
-                                Text("☀️", fontSize = 13.sp)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = Color(0xFF2C2C2E),
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .clickable { resetToSystemBrightness() },
-                                ) {
-                                    Text(
-                                        text = "Auto",
-                                        color = Color.White,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                    )
+                                AVAILABLE_SPEEDS.forEach { speed ->
+                                    val isSelected = playbackSpeed == speed
+                                    Surface(
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = if (isSelected) MaterialTheme.colorScheme.primary else Color(0xFF2C2C2E),
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .clickable {
+                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                playbackSpeed = speed
+                                                modeFeedbackText = "Speed: ${speed}x"
+                                            },
+                                    ) {
+                                        Text(
+                                            text = "${speed}x",
+                                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else Color.White,
+                                            fontSize = 12.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -937,31 +1004,64 @@ fun EnhancedVideoPlayer(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            // 1. Mute / Unmute Button
-                            IconButton(onClick = { isMuted = !isMuted }) {
-                                Text(
-                                    text = if (isMuted) "🔇" else "🔊",
-                                    fontSize = 18.sp,
-                                )
-                            }
-
-                            // 2. Brightness Toggle Button
+                            // 1. Audio Mute / Unmute Button
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
-                                color = if (showBrightnessSlider) MaterialTheme.colorScheme.primary else Color(0xFF2C2C2E),
+                                color = if (isMuted) Color(0xFFE53935).copy(alpha = 0.2f) else Color(0xFF2C2C2E),
+                                border = if (isMuted) androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE53935)) else null,
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(12.dp))
-                                    .clickable { showBrightnessSlider = !showBrightnessSlider },
+                                    .clickable {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        isMuted = !isMuted
+                                        modeFeedbackText = if (isMuted) "Audio Muted" else "Audio Enabled"
+                                    },
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(5.dp),
                                 ) {
-                                    Text("☀️", fontSize = 13.sp)
+                                    Icon(
+                                        imageVector = if (isMuted) Icons.AutoMirrored.Rounded.VolumeOff else Icons.AutoMirrored.Rounded.VolumeUp,
+                                        contentDescription = if (isMuted) "Unmute" else "Mute",
+                                        tint = if (isMuted) Color(0xFFEF5350) else Color.White,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                    Text(
+                                        text = if (isMuted) "Muted" else "Audio",
+                                        color = if (isMuted) Color(0xFFEF5350) else Color.White,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                    )
+                                }
+                            }
+
+                            // 2. Rotary Brightness Dial Toggle Button
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (showBrightnessDial) Color(0xFFFFB300) else Color(0xFF2C2C2E),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        showBrightnessDial = !showBrightnessDial
+                                    },
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.BrightnessMedium,
+                                        contentDescription = "Brightness Dial",
+                                        tint = if (showBrightnessDial) Color.Black else Color(0xFFFFD54F),
+                                        modifier = Modifier.size(16.dp),
+                                    )
                                     Text(
                                         text = "${(brightness * 100).toInt()}%",
-                                        color = if (showBrightnessSlider) MaterialTheme.colorScheme.onPrimary else Color.White,
+                                        color = if (showBrightnessDial) Color.Black else Color.White,
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.SemiBold,
                                     )
@@ -971,45 +1071,72 @@ fun EnhancedVideoPlayer(
                             // 3. Playback Speed Button (e.g. "1x", "1.5x")
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
-                                color = if (playbackSpeed != 1.0f) MaterialTheme.colorScheme.primary else Color(0xFF2C2C2E),
+                                color = if (playbackSpeed != 1.0f || showSpeedSelector) MaterialTheme.colorScheme.primary else Color(0xFF2C2C2E),
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(12.dp))
-                                    .clickable { showSpeedDialog = true },
+                                    .clickable {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        showSpeedSelector = !showSpeedSelector
+                                    },
                             ) {
                                 Row(
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(5.dp),
                                 ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Speed,
+                                        contentDescription = "Speed selector",
+                                        tint = if (playbackSpeed != 1.0f || showSpeedSelector) MaterialTheme.colorScheme.onPrimary else Color.White,
+                                        modifier = Modifier.size(16.dp),
+                                    )
                                     Text(
                                         text = "${if (playbackSpeed % 1f == 0f) playbackSpeed.toInt() else playbackSpeed}x",
-                                        color = if (playbackSpeed != 1.0f) MaterialTheme.colorScheme.onPrimary else Color.White,
-                                        fontSize = 12.sp,
+                                        color = if (playbackSpeed != 1.0f || showSpeedSelector) MaterialTheme.colorScheme.onPrimary else Color.White,
+                                        fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
                                     )
                                 }
                             }
 
-                            // 3. Manual 90-degree Rotation Button
-                            IconButton(
-                                onClick = {
-                                    rotationDegrees = (rotationDegrees + 90f) % 360f
-                                    scale = 1f
-                                    offset = Offset.Zero
-                                    onZoomChanged(false)
-                                    modeFeedbackText = "Rotated ${rotationDegrees.toInt()}°"
-                                }
-                            ) {
-                                RotateMediaIcon(modifier = Modifier.size(19.dp))
-                            }
-
-                            // 4. Aspect Ratio Toggle (Fit vs Fill/Crop)
+                            // 4. Manual 90-degree Rotation Button
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
                                 color = Color(0xFF2C2C2E),
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(12.dp))
                                     .clickable {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        rotationDegrees = (rotationDegrees + 90f) % 360f
+                                        scale = 1f
+                                        offset = Offset.Zero
+                                        onZoomChanged(false)
+                                        modeFeedbackText = "Rotated ${rotationDegrees.toInt()}°"
+                                    },
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                                ) {
+                                    RotateMediaIcon(modifier = Modifier.size(15.dp))
+                                    Text(
+                                        text = "Rotate",
+                                        color = Color.White,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                    )
+                                }
+                            }
+
+                            // 5. Aspect Ratio Toggle (Fit vs Fill/Crop)
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color(0xFF2C2C2E),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                         if (resizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT) {
                                             resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                                             modeFeedbackText = "Aspect: Fill / Crop"
@@ -1019,41 +1146,72 @@ fun EnhancedVideoPlayer(
                                         }
                                     },
                             ) {
-                                Text(
-                                    text = if (resizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT) "Fit" else "Fill",
-                                    color = Color.White,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Medium,
+                                Row(
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                )
-                            }
-
-                            // 5. Screen Orientation Toggle (Fullscreen Landscape <-> Portrait)
-                            IconButton(
-                                onClick = {
-                                    val act = activity ?: return@IconButton
-                                    if (isLandscape) {
-                                        act.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-                                        modeFeedbackText = "Orientation: Portrait"
-                                    } else {
-                                        act.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-                                        modeFeedbackText = "Orientation: Landscape"
-                                    }
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                                ) {
+                                    Icon(
+                                        imageVector = if (resizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT) Icons.Rounded.CropFree else Icons.Rounded.FitScreen,
+                                        contentDescription = "Aspect Ratio",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                    Text(
+                                        text = if (resizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT) "Fit" else "Fill",
+                                        color = Color.White,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                    )
                                 }
-                            ) {
-                                Text(
-                                    text = if (isLandscape) "📱" else "⛶",
-                                    fontSize = 18.sp,
-                                )
                             }
 
-                            // 6. Repeat / Loop Playback Button
+                            // 6. Screen Orientation Toggle (Fullscreen Landscape <-> Portrait)
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color(0xFF2C2C2E),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable {
+                                        val act = activity ?: return@clickable
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        if (isLandscape) {
+                                            act.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                                            modeFeedbackText = "Orientation: Portrait"
+                                        } else {
+                                            act.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                                            modeFeedbackText = "Orientation: Landscape"
+                                        }
+                                    },
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                                ) {
+                                    Icon(
+                                        imageVector = if (isLandscape) Icons.Rounded.StayCurrentPortrait else Icons.Rounded.StayCurrentLandscape,
+                                        contentDescription = "Orientation",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                    Text(
+                                        text = if (isLandscape) "Portrait" else "Landscape",
+                                        color = Color.White,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                    )
+                                }
+                            }
+
+                            // 7. Repeat / Loop Playback Button
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
                                 color = if (isRepeatEnabled) MaterialTheme.colorScheme.primary else Color(0xFF2C2C2E),
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(12.dp))
                                     .clickable {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                         isRepeatEnabled = !isRepeatEnabled
                                         exoPlayer.repeatMode = if (isRepeatEnabled) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
                                         modeFeedbackText = if (isRepeatEnabled) "Repeat: ON (Looping)" else "Repeat: OFF"
@@ -1064,13 +1222,15 @@ fun EnhancedVideoPlayer(
                                     },
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(5.dp),
                                 ) {
-                                    Text(
-                                        text = if (isRepeatEnabled) "🔂" else "🔁",
-                                        fontSize = 13.sp,
+                                    Icon(
+                                        imageVector = if (isRepeatEnabled) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
+                                        contentDescription = "Loop playback",
+                                        tint = if (isRepeatEnabled) MaterialTheme.colorScheme.onPrimary else Color.White,
+                                        modifier = Modifier.size(16.dp),
                                     )
                                     Text(
                                         text = if (isRepeatEnabled) "Loop" else "Once",
@@ -1083,83 +1243,21 @@ fun EnhancedVideoPlayer(
                         }
                     }
                 }
-            }
-        }
 
-        // 8. Playback Speed Selector Modal Dialog
-        if (showSpeedDialog) {
-            Dialog(onDismissRequest = { showSpeedDialog = false }) {
-                Card(
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E)),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
+                // Interactive Center Rotary Brightness Dial
+                AnimatedVisibility(
+                    visible = showBrightnessDial,
+                    enter = fadeIn() + scaleIn(),
+                    exit = fadeOut() + scaleOut(),
+                    modifier = Modifier.align(Alignment.Center),
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Text(
-                            text = "Playback Speed",
-                            color = Color.White,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        // Grid of speed choices
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            AVAILABLE_SPEEDS.chunked(4).forEach { rowSpeeds ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    rowSpeeds.forEach { speed ->
-                                        val isSelected = playbackSpeed == speed
-                                        Box(
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .clip(RoundedCornerShape(10.dp))
-                                                .background(
-                                                    if (isSelected) MaterialTheme.colorScheme.primary else Color(0xFF2C2C2E)
-                                                )
-                                                .clickable {
-                                                    playbackSpeed = speed
-                                                    showSpeedDialog = false
-                                                    modeFeedbackText = "Speed: ${speed}x"
-                                                }
-                                                .padding(vertical = 10.dp),
-                                            contentAlignment = Alignment.Center,
-                                        ) {
-                                            Text(
-                                                text = "${speed}x",
-                                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else Color.White,
-                                                fontSize = 13.sp,
-                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "Close",
-                            color = MaterialTheme.colorScheme.primary,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier
-                                .clickable { showSpeedDialog = false }
-                                .padding(8.dp),
-                        )
-                    }
+                    RotaryBrightnessDial(
+                        brightness = brightness,
+                        onBrightnessChange = { newVal -> updateBrightness(newVal) },
+                        dialSize = 190.dp,
+                        onResetToAuto = { resetToSystemBrightness() },
+                        onDismiss = { showBrightnessDial = false },
+                    )
                 }
             }
         }

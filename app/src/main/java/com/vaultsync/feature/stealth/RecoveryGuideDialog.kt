@@ -22,17 +22,21 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -79,7 +83,12 @@ fun RecoveryGuideDialog(
                         .background(if (isConfirmationForHiding) Color(0xFFFF453A) else Color(0xFF0A84FF)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(if (isConfirmationForHiding) "⚠️" else "🔑", fontSize = 18.sp)
+                    Icon(
+                        imageVector = if (isConfirmationForHiding) Icons.Rounded.Warning else Icons.Rounded.Key,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp),
+                    )
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
@@ -114,7 +123,7 @@ fun RecoveryGuideDialog(
 
                 // Route 1: Deep Link
                 RecoveryCard(
-                    icon = "🔗",
+                    iconVector = Icons.Rounded.Link,
                     title = "Route 1: Browser Deep Link",
                     subtitle = "Type or tap this link from any web browser, note, or messenger to launch VaultSync immediately:",
                     code = "vaultsync://open",
@@ -124,7 +133,7 @@ fun RecoveryGuideDialog(
 
                 // Route 2: Secret Dialer Code
                 RecoveryCard(
-                    icon = "📞",
+                    iconVector = Icons.Rounded.Phone,
                     title = "Route 2: Secret Phone Dialer Code",
                     subtitle = "Open your phone dialer app and dial this code to trigger secret launch:",
                     code = "*#*#82858#*#*",
@@ -170,7 +179,12 @@ fun RecoveryGuideDialog(
                         modifier = Modifier.padding(12.dp),
                         verticalAlignment = Alignment.Top,
                     ) {
-                        Text("🛡️", fontSize = 18.sp)
+                        Icon(
+                            imageVector = Icons.Rounded.Shield,
+                            contentDescription = null,
+                            tint = Color(0xFF30D158),
+                            modifier = Modifier.size(18.dp),
+                        )
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
                             Text(
@@ -218,7 +232,7 @@ fun RecoveryGuideDialog(
 
 @Composable
 private fun RecoveryCard(
-    icon: String,
+    iconVector: ImageVector,
     title: String,
     subtitle: String,
     code: String,
@@ -234,7 +248,12 @@ private fun RecoveryCard(
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(icon, fontSize = 16.sp)
+                Icon(
+                    imageVector = iconVector,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp),
+                )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = title,

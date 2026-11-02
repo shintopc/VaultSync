@@ -43,7 +43,11 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.DriveFileMove
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.vaultsync.core.floating.FloatingWindowIcon
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -175,7 +179,11 @@ fun VaultMainScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         IconButton(onClick = { viewModel.clearSelection() }) {
-                            Text("✕", fontSize = 20.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                            Icon(
+                                imageVector = Icons.Rounded.Close,
+                                contentDescription = "Clear selection",
+                                tint = Color.White,
+                            )
                         }
                         Text(
                             text = "${uiState.selectedEntryIds.size} Selected",
@@ -282,10 +290,18 @@ fun VaultMainScreen(
                                 containerColor = Color(0xFF1C1C1E),
                             ) {
                                 DropdownMenuItem(
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Fingerprint,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(20.dp),
+                                        )
+                                    },
                                     text = {
                                         Text(
-                                            if (uiState.isBiometricEnabled) "Disable Biometrics 👆"
-                                            else "Enable Biometrics 👆",
+                                            if (uiState.isBiometricEnabled) "Disable Biometrics"
+                                            else "Enable Biometrics",
                                             color = Color.White,
                                         )
                                     },
@@ -295,24 +311,48 @@ fun VaultMainScreen(
                                     },
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Vault Storage & Info 📊", color = Color.White) },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Rounded.PieChart,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(20.dp),
+                                        )
+                                    },
+                                    text = { Text("Vault Storage & Info", color = Color.White) },
                                     onClick = {
                                         isMoreMenuOpen = false
                                         viewModel.openStorageDialog()
                                     },
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Vault Recovery Key 🔑", color = Color.White) },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Key,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(20.dp),
+                                        )
+                                    },
+                                    text = { Text("Vault Recovery Key", color = Color.White) },
                                     onClick = {
                                         isMoreMenuOpen = false
                                         viewModel.loadOrGenerateRecoveryKey()
                                     },
                                 )
                                 DropdownMenuItem(
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Rounded.FolderShared,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(20.dp),
+                                        )
+                                    },
                                     text = {
                                         Column {
                                             Text(
-                                                if (uiState.isSharedStorageActive) "Storage: Shared Vault 📂" else "Migrate to Shared Storage 📦",
+                                                if (uiState.isSharedStorageActive) "Storage: Shared Vault" else "Migrate to Shared Storage",
                                                 color = Color.White,
                                             )
                                             Text(
@@ -328,7 +368,15 @@ fun VaultMainScreen(
                                     },
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Lock Vault 🔒", color = MaterialTheme.colorScheme.error) },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Lock,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.error,
+                                            modifier = Modifier.size(20.dp),
+                                        )
+                                    },
+                                    text = { Text("Lock Vault", color = MaterialTheme.colorScheme.error) },
                                     onClick = {
                                         isMoreMenuOpen = false
                                         viewModel.lockVault()
@@ -497,7 +545,7 @@ fun VaultMainScreen(
                 uiState.currentFolderId != null -> {
                     if (entries.isEmpty()) {
                         EmptyVaultSection(
-                            icon = "📭",
+                            icon = Icons.Rounded.FolderOpen,
                             title = "Folder is Empty",
                             description = "Add photos, videos, or documents to this folder.",
                             actionLabel = "Import Media",
@@ -568,7 +616,7 @@ fun VaultMainScreen(
                 uiState.viewTab == VaultViewTab.PHOTOS -> {
                     if (photoEntries.isEmpty()) {
                         EmptyVaultSection(
-                            icon = "🖼️",
+                            icon = Icons.Rounded.PhotoLibrary,
                             title = "No Photos or Videos in Vault",
                             description = "Tap below to import photos and videos from your gallery.",
                             actionLabel = "Import Photos & Videos",
@@ -633,7 +681,7 @@ fun VaultMainScreen(
                 uiState.viewTab == VaultViewTab.AUDIO -> {
                     if (audioEntries.isEmpty()) {
                         EmptyVaultSection(
-                            icon = "🎵",
+                            icon = Icons.Rounded.Audiotrack,
                             title = "No Audio Recordings in Vault",
                             description = "Private audio recordings, songs, and voice notes stay in this dedicated section.",
                             actionLabel = "Import Audio",
@@ -684,7 +732,7 @@ fun VaultMainScreen(
                 else -> {
                     if (vaultAlbums.isEmpty()) {
                         EmptyVaultSection(
-                            icon = "📁",
+                            icon = Icons.Rounded.Folder,
                             title = "No Albums Yet",
                             description = "Organize your private media into secure folders.",
                             actionLabel = "Create New Album",
@@ -960,6 +1008,19 @@ private fun TopNavTab(
     isSelected: Boolean,
     onClick: () -> Unit,
 ) {
+    val indicatorWidth by androidx.compose.animation.core.animateDpAsState(
+        targetValue = if (isSelected) 36.dp else 0.dp,
+        animationSpec = androidx.compose.animation.core.spring(
+            dampingRatio = 0.75f,
+            stiffness = 300f,
+        ),
+        label = "tabIndicatorWidth",
+    )
+    val textColor by androidx.compose.animation.animateColorAsState(
+        targetValue = if (isSelected) Color.White else Color(0xFF8E8E93),
+        label = "tabTextColor",
+    )
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
@@ -969,14 +1030,14 @@ private fun TopNavTab(
         Text(
             text = title,
             fontSize = 20.sp,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-            color = if (isSelected) Color.White else Color(0xFF8E8E93),
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+            color = textColor,
         )
         Spacer(modifier = Modifier.height(4.dp))
         Box(
             modifier = Modifier
                 .height(2.5.dp)
-                .width(36.dp)
+                .width(indicatorWidth)
                 .background(
                     if (isSelected) Color.White else Color.Transparent,
                     RoundedCornerShape(2.dp),
@@ -1099,35 +1160,48 @@ private fun VaultPhotoGridItem(
                     containerColor = Color(0xFF1C1C1E),
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Move out to Gallery 📤", color = Color.White) },
+                        text = { Text("Move out to Gallery", color = Color.White) },
+                        leadingIcon = {
+                            Icon(Icons.AutoMirrored.Rounded.DriveFileMove, contentDescription = null, tint = Color.White)
+                        },
                         onClick = {
                             menuExpanded = false
                             onMoveOutOfVault()
                         },
                     )
                     DropdownMenuItem(
-                        text = { Text("🗗 Open in Floating Window", color = Color.White) },
+                        text = { Text("Open in Floating Window", color = Color.White) },
+                        leadingIcon = { FloatingWindowIcon() },
                         onClick = {
                             menuExpanded = false
                             viewModel.openInFloatingWindow(entry)
                         },
                     )
                     DropdownMenuItem(
-                        text = { Text("ℹ️ Details", color = Color.White) },
+                        text = { Text("Details", color = Color.White) },
+                        leadingIcon = {
+                            Icon(Icons.Rounded.Info, contentDescription = null, tint = Color.White)
+                        },
                         onClick = {
                             menuExpanded = false
                             onMoreClick()
                         },
                     )
                     DropdownMenuItem(
-                        text = { Text("📁 Move", color = Color.White) },
+                        text = { Text("Move", color = Color.White) },
+                        leadingIcon = {
+                            Icon(Icons.Rounded.DriveFileMove, contentDescription = null, tint = Color.White)
+                        },
                         onClick = {
                             menuExpanded = false
                             viewModel.openMoveEntryDialog(entry)
                         },
                     )
                     DropdownMenuItem(
-                        text = { Text("📋 Copy", color = Color.White) },
+                        text = { Text("Copy", color = Color.White) },
+                        leadingIcon = {
+                            Icon(Icons.Rounded.ContentCopy, contentDescription = null, tint = Color.White)
+                        },
                         onClick = {
                             menuExpanded = false
                             viewModel.openCopyEntryDialog(entry)
@@ -1135,6 +1209,9 @@ private fun VaultPhotoGridItem(
                     )
                     DropdownMenuItem(
                         text = { Text("Delete Permanently", color = MaterialTheme.colorScheme.error) },
+                        leadingIcon = {
+                            Icon(Icons.Rounded.DeleteForever, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                        },
                         onClick = {
                             menuExpanded = false
                             viewModel.openDeleteEntryDialog(entry)
@@ -1205,7 +1282,8 @@ private fun VaultAlbumPreviewRow(
                 ) {
                     if (album.previewEntries.isNotEmpty()) {
                         DropdownMenuItem(
-                            text = { Text("🗗 Open in Floating Windows", color = Color.White) },
+                            text = { Text("Open in Floating Windows", color = Color.White) },
+                            leadingIcon = { FloatingWindowIcon() },
                             onClick = {
                                 menuExpanded = false
                                 viewModel.openMultipleInFloatingWindow(album.previewEntries)
@@ -1253,7 +1331,12 @@ private fun VaultAlbumPreviewRow(
                         .clickable(onClick = onAlbumClick),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("📁", fontSize = 32.sp)
+                    Icon(
+                        imageVector = Icons.Rounded.Folder,
+                        contentDescription = "Empty Folder",
+                        tint = Color.White.copy(alpha = 0.4f),
+                        modifier = Modifier.size(36.dp),
+                    )
                 }
                 Spacer(modifier = Modifier.weight(1f))
                 Spacer(modifier = Modifier.weight(1f))
@@ -1390,7 +1473,12 @@ private fun VaultAudioItemCard(
                 .background(Color(0xFF2C2C2E)),
             contentAlignment = Alignment.Center,
         ) {
-            Text("🎵", fontSize = 22.sp)
+            Icon(
+                imageVector = Icons.Rounded.Audiotrack,
+                contentDescription = "Audio Track",
+                tint = Color.White,
+                modifier = Modifier.size(24.dp),
+            )
         }
 
         Spacer(modifier = Modifier.width(14.dp))
@@ -1413,27 +1501,73 @@ private fun VaultAudioItemCard(
         }
 
         IconButton(onClick = onPlay) {
-            Text("▶", color = Color.White, fontSize = 18.sp)
+            Icon(
+                imageVector = Icons.Rounded.PlayArrow,
+                contentDescription = "Play",
+                tint = Color.White,
+                modifier = Modifier.size(22.dp),
+            )
         }
 
         Box {
             IconButton(onClick = { menuExpanded = true }) {
-                Text("⋮", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Icon(
+                    imageVector = Icons.Rounded.MoreVert,
+                    contentDescription = "More Options",
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp),
+                )
             }
             DropdownMenu(
                 expanded = menuExpanded,
                 onDismissRequest = { menuExpanded = false },
                 containerColor = Color(0xFF1C1C1E),
             ) {
-                DropdownMenuItem(text = { Text("Move out to Gallery 📤", color = Color.White) }, onClick = { menuExpanded = false; onMoveOutOfVault() })
-                DropdownMenuItem(text = { Text("Open in Floating Window 🗗", color = Color.White) }, onClick = { menuExpanded = false; onFloat() })
-                DropdownMenuItem(text = { Text("Play / Preview 🎵", color = Color.White) }, onClick = { menuExpanded = false; onPlay() })
-                DropdownMenuItem(text = { Text("Rename ✏️", color = Color.White) }, onClick = { menuExpanded = false; onRename() })
-                DropdownMenuItem(text = { Text("Move 📁", color = Color.White) }, onClick = { menuExpanded = false; onMove() })
-                DropdownMenuItem(text = { Text("Copy 📋", color = Color.White) }, onClick = { menuExpanded = false; onCopy() })
-                DropdownMenuItem(text = { Text("Details ℹ️", color = Color.White) }, onClick = { menuExpanded = false; onDetails() })
-                DropdownMenuItem(text = { Text("Export Decrypted ⬇️", color = Color.White) }, onClick = { menuExpanded = false; onExport() })
-                DropdownMenuItem(text = { Text("Delete Permanently", color = MaterialTheme.colorScheme.error) }, onClick = { menuExpanded = false; onDelete() })
+                DropdownMenuItem(
+                    text = { Text("Move out to Gallery", color = Color.White) },
+                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.DriveFileMove, contentDescription = null, tint = Color.White) },
+                    onClick = { menuExpanded = false; onMoveOutOfVault() },
+                )
+                DropdownMenuItem(
+                    text = { Text("Open in Floating Window", color = Color.White) },
+                    leadingIcon = { FloatingWindowIcon() },
+                    onClick = { menuExpanded = false; onFloat() },
+                )
+                DropdownMenuItem(
+                    text = { Text("Play / Preview", color = Color.White) },
+                    leadingIcon = { Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = Color.White) },
+                    onClick = { menuExpanded = false; onPlay() },
+                )
+                DropdownMenuItem(
+                    text = { Text("Rename", color = Color.White) },
+                    leadingIcon = { Icon(Icons.Rounded.Edit, contentDescription = null, tint = Color.White) },
+                    onClick = { menuExpanded = false; onRename() },
+                )
+                DropdownMenuItem(
+                    text = { Text("Move", color = Color.White) },
+                    leadingIcon = { Icon(Icons.Rounded.DriveFileMove, contentDescription = null, tint = Color.White) },
+                    onClick = { menuExpanded = false; onMove() },
+                )
+                DropdownMenuItem(
+                    text = { Text("Copy", color = Color.White) },
+                    leadingIcon = { Icon(Icons.Rounded.ContentCopy, contentDescription = null, tint = Color.White) },
+                    onClick = { menuExpanded = false; onCopy() },
+                )
+                DropdownMenuItem(
+                    text = { Text("Details", color = Color.White) },
+                    leadingIcon = { Icon(Icons.Rounded.Info, contentDescription = null, tint = Color.White) },
+                    onClick = { menuExpanded = false; onDetails() },
+                )
+                DropdownMenuItem(
+                    text = { Text("Export Decrypted", color = Color.White) },
+                    leadingIcon = { Icon(Icons.Rounded.FileDownload, contentDescription = null, tint = Color.White) },
+                    onClick = { menuExpanded = false; onExport() },
+                )
+                DropdownMenuItem(
+                    text = { Text("Delete Permanently", color = MaterialTheme.colorScheme.error) },
+                    leadingIcon = { Icon(Icons.Rounded.DeleteForever, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                    onClick = { menuExpanded = false; onDelete() },
+                )
             }
         }
     }
@@ -1447,15 +1581,28 @@ private fun VideoDurationBadge(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        shape = RoundedCornerShape(4.dp),
-        color = Color.Black.copy(alpha = 0.65f),
+        shape = RoundedCornerShape(6.dp),
+        color = Color.Black.copy(alpha = 0.72f),
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, Color.White.copy(alpha = 0.2f)),
         modifier = modifier,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(3.dp),
         ) {
-            Text("🎬", fontSize = 11.sp)
+            Icon(
+                imageVector = Icons.Rounded.PlayArrow,
+                contentDescription = "Video",
+                tint = Color.White,
+                modifier = Modifier.size(12.dp),
+            )
+            Text(
+                text = "Video",
+                color = Color.White,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
         }
     }
 }
@@ -1528,13 +1675,31 @@ fun EntryListItem(
                     contentAlignment = Alignment.Center,
                 ) {
                     if (isSelected) {
-                        Text("✓", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Icon(
+                            imageVector = Icons.Rounded.Check,
+                            contentDescription = "Selected",
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp),
+                        )
                     }
                 }
                 Spacer(modifier = Modifier.width(12.dp))
             }
 
-            Text(getCategoryIcon(entry.category), fontSize = 24.sp)
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color(0xFF2C2C2E)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = getCategoryVectorIcon(entry.category),
+                    contentDescription = entry.category.name,
+                    tint = Color.White.copy(alpha = 0.9f),
+                    modifier = Modifier.size(22.dp),
+                )
+            }
             Spacer(modifier = Modifier.width(16.dp))
 
             Column(modifier = Modifier.weight(1f)) {
@@ -1560,12 +1725,23 @@ fun EntryListItem(
                             color = Color(0xFF2C2C2E),
                             modifier = Modifier.padding(horizontal = 4.dp),
                         ) {
-                            Text(
-                                text = "📁 $folderName",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color.White,
+                            Row(
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                            )
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(3.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Folder,
+                                    contentDescription = null,
+                                    tint = Color.White.copy(alpha = 0.7f),
+                                    modifier = Modifier.size(11.dp),
+                                )
+                                Text(
+                                    text = folderName,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.White,
+                                )
+                            }
                         }
                     }
                 }
@@ -1574,7 +1750,12 @@ fun EntryListItem(
             if (!hasSelection) {
                 Box {
                     IconButton(onClick = { menuExpanded = true }) {
-                        Text("⋮", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Icon(
+                            imageVector = Icons.Rounded.MoreVert,
+                            contentDescription = "Options",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp),
+                        )
                     }
                     DropdownMenu(
                         expanded = menuExpanded,
@@ -1582,20 +1763,46 @@ fun EntryListItem(
                         containerColor = Color(0xFF1C1C1E),
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Move out to Gallery 📤", color = Color.White) },
+                            text = { Text("Move out to Gallery", color = Color.White) },
+                            leadingIcon = { Icon(Icons.AutoMirrored.Rounded.DriveFileMove, contentDescription = null, tint = Color.White) },
                             onClick = {
                                 menuExpanded = false
                                 onMoveOutOfVault()
                             },
                         )
-                        DropdownMenuItem(text = { Text("🗗 Open in Floating Window", color = Color.White) }, onClick = { menuExpanded = false; onFloat() })
-                        DropdownMenuItem(text = { Text("Preview", color = Color.White) }, onClick = { menuExpanded = false; onClick() })
-                        DropdownMenuItem(text = { Text("Rename", color = Color.White) }, onClick = { menuExpanded = false; onRename() })
-                        DropdownMenuItem(text = { Text("Move", color = Color.White) }, onClick = { menuExpanded = false; onMove() })
-                        DropdownMenuItem(text = { Text("Copy", color = Color.White) }, onClick = { menuExpanded = false; onCopy() })
-                        DropdownMenuItem(text = { Text("Details", color = Color.White) }, onClick = { menuExpanded = false; onDetails() })
+                        DropdownMenuItem(
+                            text = { Text("Open in Floating Window", color = Color.White) },
+                            leadingIcon = { FloatingWindowIcon() },
+                            onClick = { menuExpanded = false; onFloat() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Preview", color = Color.White) },
+                            leadingIcon = { Icon(Icons.Rounded.Visibility, contentDescription = null, tint = Color.White) },
+                            onClick = { menuExpanded = false; onClick() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Rename", color = Color.White) },
+                            leadingIcon = { Icon(Icons.Rounded.Edit, contentDescription = null, tint = Color.White) },
+                            onClick = { menuExpanded = false; onRename() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Move", color = Color.White) },
+                            leadingIcon = { Icon(Icons.Rounded.DriveFileMove, contentDescription = null, tint = Color.White) },
+                            onClick = { menuExpanded = false; onMove() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Copy", color = Color.White) },
+                            leadingIcon = { Icon(Icons.Rounded.ContentCopy, contentDescription = null, tint = Color.White) },
+                            onClick = { menuExpanded = false; onCopy() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Details", color = Color.White) },
+                            leadingIcon = { Icon(Icons.Rounded.Info, contentDescription = null, tint = Color.White) },
+                            onClick = { menuExpanded = false; onDetails() },
+                        )
                         DropdownMenuItem(
                             text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                            leadingIcon = { Icon(Icons.Rounded.DeleteForever, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
                             onClick = { menuExpanded = false; onDelete() },
                         )
                     }
@@ -1607,7 +1814,7 @@ fun EntryListItem(
 
 @Composable
 private fun EmptyVaultSection(
-    icon: String,
+    icon: ImageVector,
     title: String,
     description: String,
     actionLabel: String,
@@ -1620,8 +1827,22 @@ private fun EmptyVaultSection(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text(icon, fontSize = 52.sp)
-        Spacer(modifier = Modifier.height(16.dp))
+        Box(
+            modifier = Modifier
+                .size(84.dp)
+                .clip(CircleShape)
+                .background(Color(0xFF1C1C1E))
+                .border(1.dp, Color.White.copy(alpha = 0.15f), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(38.dp),
+            )
+        }
+        Spacer(modifier = Modifier.height(20.dp))
         Text(
             text = title,
             style = MaterialTheme.typography.titleMedium,
@@ -1646,6 +1867,17 @@ private fun EmptyVaultSection(
         ) {
             Text(actionLabel, fontWeight = FontWeight.SemiBold)
         }
+    }
+}
+
+fun getCategoryVectorIcon(category: VaultCategory): ImageVector {
+    return when (category) {
+        VaultCategory.Images -> Icons.Rounded.Image
+        VaultCategory.Videos -> Icons.Rounded.Movie
+        VaultCategory.Audio -> Icons.Rounded.Audiotrack
+        VaultCategory.Documents -> Icons.Rounded.Description
+        VaultCategory.Other -> Icons.Rounded.Inventory2
+        VaultCategory.All -> Icons.Rounded.Folder
     }
 }
 

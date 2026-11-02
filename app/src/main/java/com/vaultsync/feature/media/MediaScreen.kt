@@ -32,6 +32,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.Icon
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.vaultsync.core.media.ExifDetails
@@ -88,6 +89,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import com.vaultsync.core.floating.FloatingWindowIcon
 import com.vaultsync.core.floating.LocalFloatingWindowManager
+import com.vaultsync.core.designsystem.ZoomResetChip
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -394,7 +396,17 @@ fun MediaScreen(
                             containerColor = if (isTrash) Color(0xFFFF9500) else MaterialTheme.colorScheme.error,
                         ),
                     ) {
-                        Text(if (isTrash) "Move to Trash 🗑️" else "Delete Permanently")
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Icon(
+                                imageVector = if (isTrash) Icons.Rounded.DeleteOutline else Icons.Rounded.DeleteForever,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Text(if (isTrash) "Move to Trash" else "Delete Permanently")
+                        }
                     }
                 },
                 dismissButton = {
@@ -434,7 +446,17 @@ fun MediaScreen(
                             containerColor = if (isTrash) Color(0xFFFF9500) else MaterialTheme.colorScheme.error,
                         ),
                     ) {
-                        Text(if (isTrash) "Move to Trash 🗑️" else "Delete Permanently")
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Icon(
+                                imageVector = if (isTrash) Icons.Rounded.DeleteOutline else Icons.Rounded.DeleteForever,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Text(if (isTrash) "Move to Trash" else "Delete Permanently")
+                        }
                     }
                 },
                 dismissButton = {
@@ -1215,17 +1237,30 @@ private fun VideoDurationBadge(
     durationMillis: Long,
     modifier: Modifier = Modifier,
 ) {
-    Box(
-        modifier = modifier
-            .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(6.dp))
-            .padding(horizontal = 6.dp, vertical = 2.dp),
+    Surface(
+        shape = RoundedCornerShape(6.dp),
+        color = Color.Black.copy(alpha = 0.72f),
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, Color.White.copy(alpha = 0.2f)),
+        modifier = modifier,
     ) {
-        Text(
-            text = "▶ ${formatDuration(durationMillis)}",
-            color = Color.White,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Medium,
-        )
+        Row(
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.PlayArrow,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(11.dp),
+            )
+            Text(
+                text = formatDuration(durationMillis),
+                color = Color.White,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
     }
 }
 
@@ -1424,7 +1459,20 @@ private fun AudioListView(
                     .padding(14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("🎵", fontSize = 24.sp)
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF2C2C2E)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Audiotrack,
+                        contentDescription = "Audio Track",
+                        tint = Color.White,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
                 Spacer(modifier = Modifier.width(14.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -1874,28 +1922,16 @@ private fun ZoomableImageViewer(
         )
 
         // Zoom Level Indicator & Quick Reset Chip
-        if (scale > 1.05f) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 80.dp, end = 16.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color.Black.copy(alpha = 0.75f))
-                    .border(1.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
-                    .clickable {
-                        scale = 1f
-                        offset = Offset.Zero
-                    }
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
-            ) {
-                Text(
-                    text = "🔍 ${"%.1f".format(scale)}x  ✕ Reset",
-                    color = Color.White,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
-        }
+        ZoomResetChip(
+            scale = scale,
+            onReset = {
+                scale = 1f
+                offset = Offset.Zero
+            },
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 80.dp, end = 16.dp),
+        )
     }
 }
 
@@ -1953,7 +1989,21 @@ private fun FullscreenAudioPlayer(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Text("🎵", fontSize = 72.sp)
+            Box(
+                modifier = Modifier
+                    .size(100.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF1C1C1E))
+                    .border(1.5.dp, Color.White.copy(alpha = 0.2f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Audiotrack,
+                    contentDescription = "Audio Track",
+                    tint = Color.White,
+                    modifier = Modifier.size(48.dp),
+                )
+            }
             Spacer(modifier = Modifier.height(24.dp))
             Text(
                 text = item.displayName,

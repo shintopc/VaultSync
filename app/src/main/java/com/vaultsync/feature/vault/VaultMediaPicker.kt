@@ -35,6 +35,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -225,7 +227,12 @@ fun VaultMediaPicker(
                         },
                         enabled = !isImporting,
                     ) {
-                        Text("📁", fontSize = 20.sp)
+                        Icon(
+                            imageVector = Icons.Rounded.FolderOpen,
+                            contentDescription = "System File Picker",
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp),
+                        )
                     }
 
                     // Select All / Deselect All
@@ -262,7 +269,20 @@ fun VaultMediaPicker(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center,
                         ) {
-                            Text("🔒", fontSize = 48.sp)
+                            Box(
+                                modifier = Modifier
+                                    .size(72.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF2C2C2E)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Lock,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(36.dp),
+                                )
+                            }
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
                                 text = "Media Access Required",
@@ -388,10 +408,20 @@ fun VaultMediaPicker(
                             displayedItems.isEmpty() -> {
                                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text(
-                                            if (selectedCategoryTab == VaultPickerCategory.AUDIO) "🎵" else "🖼️",
-                                            fontSize = 42.sp
-                                        )
+                                        Box(
+                                            modifier = Modifier
+                                                .size(64.dp)
+                                                .clip(CircleShape)
+                                                .background(Color(0xFF2C2C2E)),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Icon(
+                                                imageVector = if (selectedCategoryTab == VaultPickerCategory.AUDIO) Icons.Rounded.Audiotrack else Icons.Rounded.PhotoLibrary,
+                                                contentDescription = null,
+                                                tint = Color.White.copy(alpha = 0.6f),
+                                                modifier = Modifier.size(32.dp),
+                                            )
+                                        }
                                         Spacer(modifier = Modifier.height(12.dp))
                                         Text(
                                             if (selectedCategoryTab == VaultPickerCategory.AUDIO) "No audio files found"
@@ -442,7 +472,12 @@ fun VaultMediaPicker(
                                                             .background(Color(0xFF2C2C2E)),
                                                         contentAlignment = Alignment.Center,
                                                     ) {
-                                                        Text("🎵", fontSize = 18.sp)
+                                                        Icon(
+                                                            imageVector = Icons.Rounded.Audiotrack,
+                                                            contentDescription = null,
+                                                            tint = Color.White,
+                                                            modifier = Modifier.size(18.dp),
+                                                        )
                                                     }
                                                     Spacer(modifier = Modifier.height(6.dp))
                                                     Text(
@@ -484,15 +519,24 @@ fun VaultMediaPicker(
 
                                             // Video duration badge
                                             if (item.category == MediaCategory.Videos) {
-                                                Box(
+                                                Row(
                                                     modifier = Modifier
                                                         .align(Alignment.BottomStart)
                                                         .padding(6.dp)
-                                                        .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(6.dp))
+                                                        .background(Color.Black.copy(alpha = 0.72f), RoundedCornerShape(6.dp))
+                                                        .border(0.5.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(6.dp))
                                                         .padding(horizontal = 5.dp, vertical = 2.dp),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(3.dp),
                                                 ) {
+                                                    Icon(
+                                                        imageVector = Icons.Rounded.PlayArrow,
+                                                        contentDescription = null,
+                                                        tint = Color.White,
+                                                        modifier = Modifier.size(11.dp),
+                                                    )
                                                     Text(
-                                                        text = "▶ ${formatDuration(item.durationMillis)}",
+                                                        text = formatDuration(item.durationMillis),
                                                         color = Color.White,
                                                         fontSize = 10.sp,
                                                         fontWeight = FontWeight.Medium,
@@ -512,11 +556,11 @@ fun VaultMediaPicker(
                                                 contentAlignment = Alignment.Center,
                                             ) {
                                                 if (isSelected) {
-                                                    Text(
-                                                        text = "✓",
-                                                        color = Color.Black,
-                                                        fontSize = 14.sp,
-                                                        fontWeight = FontWeight.Bold,
+                                                    Icon(
+                                                        imageVector = Icons.Rounded.Check,
+                                                        contentDescription = "Selected",
+                                                        tint = Color.Black,
+                                                        modifier = Modifier.size(16.dp),
                                                     )
                                                 }
                                             }
@@ -605,11 +649,21 @@ fun VaultMediaPicker(
                                 ),
                                 shape = RoundedCornerShape(25.dp),
                             ) {
-                                Text(
-                                    text = if (count > 0) "🔒 Add to Vault ($count)" else "🔒 Add to Vault",
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold,
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Lock,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                    Text(
+                                        text = if (count > 0) "Add to Vault ($count)" else "Add to Vault",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                }
                             }
                         }
                     }

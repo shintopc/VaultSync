@@ -15,10 +15,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -141,7 +144,12 @@ fun SecretAppEntryScreen(
                         .background(Color(0xFF2C2C2E)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("🛡️", fontSize = 28.sp)
+                    Icon(
+                        imageVector = Icons.Rounded.Shield,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(30.dp),
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -185,7 +193,18 @@ fun SecretAppEntryScreen(
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2C2C2E)),
                     ) {
-                        Text("👆 Enter PIN / Biometrics", color = Color.White)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Key,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Text("Enter PIN / Biometrics", color = Color.White)
+                        }
                     }
                 } else {
                     OutlinedTextField(
@@ -240,7 +259,18 @@ fun SecretAppEntryScreen(
                             onClick = { triggerBiometric() },
                             modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Text("👆 Unlock with Biometrics", color = Color.White, fontSize = 13.sp)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Fingerprint,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                                Text("Unlock with Biometrics", color = Color.White, fontSize = 13.sp)
+                            }
                         }
                     }
 

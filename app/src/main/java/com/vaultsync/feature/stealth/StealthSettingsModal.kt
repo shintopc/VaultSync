@@ -18,11 +18,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Switch
@@ -87,7 +91,12 @@ fun StealthSettingsModal(
                         .background(Color(0xFF32D74B)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("🛡️", fontSize = 18.sp)
+                    Icon(
+                        imageVector = Icons.Rounded.Shield,
+                        contentDescription = null,
+                        tint = Color.Black,
+                        modifier = Modifier.size(20.dp),
+                    )
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
@@ -121,7 +130,7 @@ fun StealthSettingsModal(
 
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     ModeOptionTile(
-                        icon = "🖼️",
+                        iconVector = Icons.Rounded.PhotoLibrary,
                         title = "Normal Mode",
                         subtitle = "VaultSync gallery icon on home screen",
                         isSelected = selectedMode == IconMode.NORMAL,
@@ -130,7 +139,7 @@ fun StealthSettingsModal(
                         },
                     )
                     ModeOptionTile(
-                        icon = "🧮",
+                        iconVector = Icons.Rounded.Calculate,
                         title = "Disguised: Calculator",
                         subtitle = "Opens real calculator. Secret gesture unlocks gallery",
                         isSelected = selectedMode == IconMode.CALCULATOR,
@@ -140,7 +149,7 @@ fun StealthSettingsModal(
                         },
                     )
                     ModeOptionTile(
-                        icon = "📝",
+                        iconVector = Icons.Rounded.EditNote,
                         title = "Disguised: Notes",
                         subtitle = "Opens notes memo cover. Secret gesture unlocks gallery",
                         isSelected = selectedMode == IconMode.NOTES,
@@ -150,7 +159,7 @@ fun StealthSettingsModal(
                         },
                     )
                     ModeOptionTile(
-                        icon = "👻",
+                        iconVector = Icons.Rounded.VisibilityOff,
                         title = "Hidden Mode",
                         subtitle = "Launcher icon disabled. Access via secret code (*#*#82858#*#*) or link",
                         isSelected = selectedMode == IconMode.HIDDEN,
@@ -310,7 +319,7 @@ fun StealthSettingsModal(
                             ) {
                                 Text(
                                     text = gestureTestFeedback
-                                        ?: "👆 Test Area: Try your ${selectedGestureType.displayName.lowercase()} here",
+                                        ?: "Test Area: Try your ${selectedGestureType.displayName.lowercase()} here",
                                     color = if (gestureTestFeedback != null) Color(0xFF32D74B) else Color(0xFF8E8E93),
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Medium,
@@ -329,7 +338,12 @@ fun StealthSettingsModal(
                     ) {
                         Column(modifier = Modifier.padding(14.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("🛡️", fontSize = 16.sp)
+                                Icon(
+                                    imageVector = Icons.Rounded.Shield,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(16.dp),
+                                )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = "Pure Disguise Security",
@@ -369,7 +383,7 @@ fun StealthSettingsModal(
                                 fontWeight = FontWeight.SemiBold,
                             )
                             Text(
-                                text = "Hold ⚙️ in gallery to open Secret Vault • Hides obvious lock buttons",
+                                text = "Hold Settings icon in gallery to open Secret Vault • Hides obvious lock buttons",
                                 color = Color(0xFF8E8E93),
                                 fontSize = 12.sp,
                             )
@@ -392,7 +406,18 @@ fun StealthSettingsModal(
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2C2C2E)),
                     shape = RoundedCornerShape(12.dp),
                 ) {
-                    Text("📖 View Lockout Recovery Guide & Secret Codes", color = Color(0xFF64D2FF), fontSize = 13.sp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.MenuBook,
+                            contentDescription = null,
+                            tint = Color(0xFF64D2FF),
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Text("View Lockout Recovery Guide & Secret Codes", color = Color(0xFF64D2FF), fontSize = 13.sp)
+                    }
                 }
             }
         },
@@ -447,7 +472,8 @@ fun StealthSettingsModal(
 
 @Composable
 private fun ModeOptionTile(
-    icon: String,
+    icon: String = "",
+    iconVector: ImageVector? = null,
     title: String,
     subtitle: String,
     isSelected: Boolean,
@@ -469,7 +495,16 @@ private fun ModeOptionTile(
             modifier = Modifier.padding(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(icon, fontSize = 22.sp)
+            if (iconVector != null) {
+                Icon(
+                    imageVector = iconVector,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(22.dp),
+                )
+            } else {
+                Text(icon, fontSize = 22.sp)
+            }
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(

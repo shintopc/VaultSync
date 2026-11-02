@@ -33,7 +33,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import com.vaultsync.core.floating.FloatingWindowIcon
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.automirrored.rounded.DriveFileMove
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.rounded.*
+import com.vaultsync.core.designsystem.ZoomResetChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -422,28 +427,16 @@ fun ProtectedImageViewer(
         )
 
         // Zoom Level Indicator & Quick Reset Chip
-        if (scale > 1.05f) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 80.dp, end = 16.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color.Black.copy(alpha = 0.75f))
-                    .border(1.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
-                    .clickable {
-                        scale = 1f
-                        offset = Offset.Zero
-                    }
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
-            ) {
-                Text(
-                    text = "🔍 ${"%.1f".format(scale)}x  ✕ Reset",
-                    color = Color.White,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
-        }
+        ZoomResetChip(
+            scale = scale,
+            onReset = {
+                scale = 1f
+                offset = Offset.Zero
+            },
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 80.dp, end = 16.dp),
+        )
     }
 }
 
@@ -522,10 +515,16 @@ fun ProtectedAudioPlayer(previewFile: File, fileName: String) {
                 modifier = Modifier
                     .size(80.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
+                    .background(Color(0xFF1C1C1E))
+                    .border(1.5.dp, Color.White.copy(alpha = 0.2f), CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("🎵", fontSize = 36.sp)
+                Icon(
+                    imageVector = Icons.Rounded.Audiotrack,
+                    contentDescription = "Audio Player",
+                    tint = Color.White,
+                    modifier = Modifier.size(38.dp),
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -568,12 +567,13 @@ fun ProtectedAudioPlayer(previewFile: File, fileName: String) {
                 modifier = Modifier
                     .size(56.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary),
+                    .background(Color.White),
             ) {
-                Text(
-                    text = if (isPlaying) "⏸" else "▶",
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    fontSize = 24.sp,
+                Icon(
+                    imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                    contentDescription = if (isPlaying) "Pause" else "Play",
+                    tint = Color.Black,
+                    modifier = Modifier.size(28.dp),
                 )
             }
         }
@@ -677,7 +677,11 @@ fun ProtectedPdfViewer(
                     onClick = { if (currentPage > 0) currentPage-- },
                     enabled = currentPage > 0,
                 ) {
-                    Text("◀", color = Color.White, fontSize = 20.sp)
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                        contentDescription = "Previous Page",
+                        tint = if (currentPage > 0) Color.White else Color.Gray,
+                    )
                 }
 
                 Text(
@@ -690,7 +694,11 @@ fun ProtectedPdfViewer(
                     onClick = { if (currentPage < totalPages - 1) currentPage++ },
                     enabled = currentPage < totalPages - 1,
                 ) {
-                    Text("▶", color = Color.White, fontSize = 20.sp)
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                        contentDescription = "Next Page",
+                        tint = if (currentPage < totalPages - 1) Color.White else Color.Gray,
+                    )
                 }
             }
         }
@@ -710,7 +718,21 @@ fun UnsupportedFormatCard(entry: VaultEntry, onExport: () -> Unit) {
             modifier = Modifier.padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("📄", fontSize = 48.sp)
+            Box(
+                modifier = Modifier
+                    .size(72.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF1C1C1E))
+                    .border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Description,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(36.dp),
+                )
+            }
             Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = entry.originalFileName,
@@ -770,9 +792,11 @@ fun VaultEntryThumbnail(
             modifier = modifier.background(Color(0xFF1C1C1E)),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                text = getCategoryIcon(entry.category),
-                fontSize = 24.sp,
+            Icon(
+                imageVector = getCategoryVectorIcon(entry.category),
+                contentDescription = entry.category.name,
+                tint = Color.White.copy(alpha = 0.5f),
+                modifier = Modifier.size(28.dp),
             )
         }
     }
@@ -919,7 +943,12 @@ fun VaultFullscreenMediaViewer(
                                                 modifier = Modifier.padding(20.dp),
                                                 horizontalAlignment = Alignment.CenterHorizontally,
                                             ) {
-                                                Text("⚠️", fontSize = 36.sp)
+                                                Icon(
+                                                    imageVector = Icons.Rounded.Warning,
+                                                    contentDescription = "Decryption Failed",
+                                                    tint = MaterialTheme.colorScheme.error,
+                                                    modifier = Modifier.size(36.dp),
+                                                )
                                                 Spacer(modifier = Modifier.height(8.dp))
                                                 Text(
                                                     text = "Decryption Failed",
@@ -962,7 +991,11 @@ fun VaultFullscreenMediaViewer(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             IconButton(onClick = onDismiss) {
-                                Text("←", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                                    contentDescription = "Back",
+                                    tint = Color.White,
+                                )
                             }
                             Spacer(modifier = Modifier.width(8.dp))
                             Column(modifier = Modifier.weight(1f)) {
@@ -987,16 +1020,32 @@ fun VaultFullscreenMediaViewer(
                                 FloatingWindowIcon()
                             }
                             IconButton(onClick = { onDetailsClick(currentItem) }) {
-                                Text("ℹ️", fontSize = 18.sp)
+                                Icon(
+                                    imageVector = Icons.Rounded.Info,
+                                    contentDescription = "Details",
+                                    tint = Color.White,
+                                )
                             }
                             IconButton(onClick = { onExportClick(currentItem) }) {
-                                Text("⬇️", fontSize = 18.sp)
+                                Icon(
+                                    imageVector = Icons.Rounded.FileDownload,
+                                    contentDescription = "Export",
+                                    tint = Color.White,
+                                )
                             }
                             IconButton(onClick = { onMoveOutOfVaultClick(currentItem) }) {
-                                Text("📤", fontSize = 18.sp)
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Rounded.DriveFileMove,
+                                    contentDescription = "Move out to Gallery",
+                                    tint = Color.White,
+                                )
                             }
                             IconButton(onClick = { onDeleteClick(currentItem) }) {
-                                Text("🗑️", fontSize = 18.sp)
+                                Icon(
+                                    imageVector = Icons.Rounded.DeleteOutline,
+                                    contentDescription = "Delete",
+                                    tint = Color.White,
+                                )
                             }
                         }
                     }

@@ -56,7 +56,10 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -702,7 +705,12 @@ fun SettingsScreen(
             onDismissRequest = { showEncryptionInfoDialog = false },
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("🛡️", fontSize = 20.sp)
+                    Icon(
+                        imageVector = Icons.Rounded.Shield,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp),
+                    )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Cryptographic Specifications", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 17.sp)
                 }
@@ -832,7 +840,12 @@ fun SettingsScreen(
             onDismissRequest = { showAboutDialog = false },
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("🛡️", fontSize = 24.sp)
+                    Icon(
+                        imageVector = Icons.Rounded.Shield,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp),
+                    )
                     Spacer(modifier = Modifier.width(10.dp))
                     Text("VaultSync Android", color = Color.White, fontWeight = FontWeight.Bold)
                 }
@@ -1414,7 +1427,7 @@ private fun SecurityPrivacySubScreen(
         item {
             SettingsSection(title = "VAULT CREDENTIALS & ACCESS") {
                 SettingsTile(
-                    icon = "🔐",
+                    iconVector = Icons.Rounded.Lock,
                     iconBg = Color(0xFF192538),
                     title = if (isVaultInitialized) "Change Vault Password" else "Create Vault Password",
                     subtitle = if (isVaultInitialized) "Update your 4-12 digit master PIN password" else "Set up a Master PIN to protect your private vault",
@@ -1425,7 +1438,7 @@ private fun SecurityPrivacySubScreen(
                 )
                 SettingsDivider()
                 SettingsTile(
-                    icon = "📂",
+                    iconVector = Icons.Rounded.FolderOpen,
                     iconBg = Color(0xFF1B2E24),
                     title = "Open Secret Vault",
                     subtitle = "Access private encrypted albums, photos and videos",
@@ -1435,7 +1448,7 @@ private fun SecurityPrivacySubScreen(
                 )
                 SettingsDivider()
                 SettingsSwitchTile(
-                    icon = "👆",
+                    iconVector = Icons.Rounded.Fingerprint,
                     iconBg = Color(0xFF281E38),
                     title = "Biometric Authentication",
                     subtitle = if (isHardwareBiometricAvailable) "Unlock vault with fingerprint or face" else "Device biometrics not enrolled or supported",
@@ -1444,7 +1457,7 @@ private fun SecurityPrivacySubScreen(
                 )
                 SettingsDivider()
                 SettingsTile(
-                    icon = "🔑",
+                    iconVector = Icons.Rounded.Key,
                     iconBg = Color(0xFF2A2016),
                     title = "Master Recovery Key",
                     subtitle = if (hasRecoveryKey) "Active • Offline 128-bit backup key configured"
@@ -1461,17 +1474,17 @@ private fun SecurityPrivacySubScreen(
         item {
             SettingsSection(title = "APPLICATION LOCK & PROTECTION") {
                 SettingsTile(
-                    icon = "🛡️",
+                    iconVector = Icons.Rounded.Shield,
                     iconBg = Color(0xFF1B2E24),
                     title = "Screen Protection (FLAG_SECURE)",
                     subtitle = "Blocks screenshots and masks app in Android Recent Tasks",
-                    status = "Active 🛡️",
+                    status = "Active",
                     statusColor = Color(0xFF30D158),
                     isClickable = false,
                 )
                 SettingsDivider()
                 SettingsTile(
-                    icon = "⏱️",
+                    iconVector = Icons.Rounded.Timer,
                     iconBg = Color(0xFF1B2E24),
                     title = "Auto-Lock on Background",
                     subtitle = "Lock sensitive vault content after app is minimized",
@@ -1482,7 +1495,7 @@ private fun SecurityPrivacySubScreen(
                 )
                 SettingsDivider()
                 SettingsTile(
-                    icon = "📖",
+                    iconVector = Icons.Rounded.MenuBook,
                     iconBg = Color(0xFF1B2E24),
                     title = "Lockout Recovery Guide",
                     subtitle = "Dialer code (*#*#82858#*#*) & deep links (vaultsync://open)",
@@ -1496,7 +1509,7 @@ private fun SecurityPrivacySubScreen(
         item {
             SettingsSection(title = "CRYPTOGRAPHIC SPECIFICATIONS") {
                 SettingsTile(
-                    icon = "🔒",
+                    iconVector = Icons.Rounded.Lock,
                     iconBg = Color(0xFF192538),
                     title = "Hardware Encryption Standard",
                     subtitle = "AES-256-GCM chunked file format with per-file DEKs & KeyStore VMK",
@@ -1541,7 +1554,7 @@ private fun StorageRecoverySubScreen(
         item {
             SettingsSection(title = "STORAGE BREAKDOWN") {
                 SettingsTile(
-                    icon = "📱",
+                    iconVector = Icons.Rounded.Storage,
                     iconBg = Color(0xFF1C1C1E),
                     title = "Available Device Space",
                     subtitle = "Remaining storage on internal flash",
@@ -1550,7 +1563,7 @@ private fun StorageRecoverySubScreen(
                 )
                 SettingsDivider()
                 SettingsTile(
-                    icon = "🔐",
+                    iconVector = Icons.Rounded.Lock,
                     iconBg = Color(0xFF162534),
                     title = "Encrypted Vault Storage",
                     subtitle = "AES-256 protected blobs and manifest metadata",
@@ -1560,7 +1573,7 @@ private fun StorageRecoverySubScreen(
                 )
                 SettingsDivider()
                 SettingsTile(
-                    icon = "♻️",
+                    iconVector = Icons.Rounded.DeleteOutline,
                     iconBg = Color(0xFF2C2214),
                     title = "Recycle Bin Space",
                     subtitle = "${trashStats.first} soft-deleted item(s)",
@@ -1575,18 +1588,18 @@ private fun StorageRecoverySubScreen(
         item {
             SettingsSection(title = "VAULT LOCATION & SURVIVABILITY") {
                 SettingsTile(
-                    icon = "📂",
+                    iconVector = Icons.Rounded.FolderOpen,
                     iconBg = Color(0xFF1B2E24),
                     title = "Storage Mode",
                     subtitle = if (isSharedStorageActive) "Documents/VaultSync (Survives app uninstallation)" else "App-private internal files directory",
-                    status = if (isSharedStorageActive) "Shared 📂" else "Internal 🔒",
+                    status = if (isSharedStorageActive) "Shared" else "Internal",
                     statusColor = if (isSharedStorageActive) Color(0xFF38BDF8) else Color(0xFFF59E0B),
                     isClickable = true,
                     onClick = onOpenMigrationDialog,
                 )
                 SettingsDivider()
                 SettingsTile(
-                    icon = "📦",
+                    iconVector = Icons.Rounded.Inventory2,
                     iconBg = Color(0xFF1B2E24),
                     title = if (isSharedStorageActive) "Shared Vault Configured" else "Migrate to Shared Storage",
                     subtitle = "Ensures encrypted vault survives app uninstall without data loss",
@@ -1597,7 +1610,7 @@ private fun StorageRecoverySubScreen(
                 )
                 SettingsDivider()
                 SettingsTile(
-                    icon = "🔍",
+                    iconVector = Icons.Rounded.Search,
                     iconBg = Color(0xFF1B2E24),
                     title = "Scan for Existing Vaults",
                     subtitle = "Discover `.vsf` containers in Documents/VaultSync",
@@ -1612,7 +1625,7 @@ private fun StorageRecoverySubScreen(
         item {
             SettingsSection(title = "TRASH & RECYCLE BIN") {
                 SettingsSwitchTile(
-                    icon = "♻️",
+                    iconVector = Icons.Rounded.Delete,
                     iconBg = Color(0xFF2C2214),
                     title = "Enable Recycle Bin",
                     subtitle = "Soft-deletes media for recovery before permanent purging",
@@ -1621,7 +1634,7 @@ private fun StorageRecoverySubScreen(
                 )
                 SettingsDivider()
                 SettingsTile(
-                    icon = "⏱️",
+                    iconVector = Icons.Rounded.Timer,
                     iconBg = Color(0xFF2C2214),
                     title = "Auto-Purge Duration",
                     subtitle = "Automatically clean files older than retention limit",
@@ -1631,7 +1644,7 @@ private fun StorageRecoverySubScreen(
                 )
                 SettingsDivider()
                 SettingsTile(
-                    icon = "♻️",
+                    iconVector = Icons.Rounded.DeleteOutline,
                     iconBg = Color(0xFF2C2214),
                     title = "Open Trash Bin",
                     subtitle = if (trashStats.first > 0) "${trashStats.first} item(s) • ${formatBytes(trashStats.second)}" else "Trash is empty",
@@ -1642,7 +1655,7 @@ private fun StorageRecoverySubScreen(
                 if (trashStats.first > 0) {
                     SettingsDivider()
                     SettingsTile(
-                        icon = "🧹",
+                        iconVector = Icons.Rounded.DeleteForever,
                         iconBg = Color(0xFF2C1818),
                         title = "Empty Trash Bin",
                         subtitle = "Permanently shred all ${trashStats.first} deleted item(s) now",
@@ -1659,7 +1672,7 @@ private fun StorageRecoverySubScreen(
         item {
             SettingsSection(title = "STORAGE MAINTENANCE") {
                 SettingsTile(
-                    icon = "🧹",
+                    iconVector = Icons.Rounded.CleaningServices,
                     iconBg = Color(0xFF242428),
                     title = "Clean Stale Temporary Files",
                     subtitle = "Purge unfinished .part chunks and staging artifacts",
@@ -1669,7 +1682,7 @@ private fun StorageRecoverySubScreen(
                 )
                 SettingsDivider()
                 SettingsTile(
-                    icon = "⚡",
+                    iconVector = Icons.Rounded.Memory,
                     iconBg = Color(0xFF242428),
                     title = "Flush Memory Image Cache",
                     subtitle = "Clear in-memory preview cache to free device RAM",
@@ -1722,28 +1735,28 @@ private fun AppearanceCamouflageSubScreen(
                 )
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     ModeOptionCard(
-                        icon = "🖼️",
+                        iconVector = Icons.Rounded.PhotoLibrary,
                         title = "Normal Mode",
                         subtitle = "Standard VaultSync gallery icon on home screen",
                         isSelected = currentIconMode == IconMode.NORMAL,
                         onClick = { onSelectIconMode(IconMode.NORMAL) },
                     )
                     ModeOptionCard(
-                        icon = "🧮",
+                        iconVector = Icons.Rounded.Calculate,
                         title = "Disguised: Calculator",
                         subtitle = "Working calculator cover. Secret gesture unlocks gallery",
                         isSelected = currentIconMode == IconMode.CALCULATOR,
                         onClick = { onSelectIconMode(IconMode.CALCULATOR) },
                     )
                     ModeOptionCard(
-                        icon = "📝",
+                        iconVector = Icons.Rounded.EditNote,
                         title = "Disguised: Notes",
                         subtitle = "Working notes memo cover. Secret gesture unlocks gallery",
                         isSelected = currentIconMode == IconMode.NOTES,
                         onClick = { onSelectIconMode(IconMode.NOTES) },
                     )
                     ModeOptionCard(
-                        icon = "👻",
+                        iconVector = Icons.Rounded.VisibilityOff,
                         title = "Hidden Mode",
                         subtitle = "Launcher icon disabled. Access via *#*#82858#*#* or deep link",
                         isSelected = currentIconMode == IconMode.HIDDEN,
@@ -1758,7 +1771,7 @@ private fun AppearanceCamouflageSubScreen(
             item {
                 SettingsSection(title = "NORMAL MODE SECURITY GATE") {
                     SettingsSwitchTile(
-                        icon = "🔒",
+                        iconVector = Icons.Rounded.Lock,
                         iconBg = Color(0xFF1B2E24),
                         title = "Require Secret Access on Launch",
                         subtitle = "Prompts for master PIN or biometric before opening gallery",
@@ -1780,7 +1793,12 @@ private fun AppearanceCamouflageSubScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("🛡️", fontSize = 16.sp)
+                            Icon(
+                                imageVector = Icons.Rounded.Shield,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(16.dp),
+                            )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "Pure Disguise Security Active",
@@ -1805,7 +1823,7 @@ private fun AppearanceCamouflageSubScreen(
         item {
             SettingsSection(title = "SECRET TWO-FINGER GESTURE ACCESS") {
                 SettingsSwitchTile(
-                    icon = "👆",
+                    iconVector = Icons.Rounded.Fingerprint,
                     iconBg = Color(0xFF1B2E24),
                     title = "Enable Two-Finger Gesture",
                     subtitle = "Unlocks the main gallery from disguised covers (Calculator/Notes/Hidden)",
@@ -1878,7 +1896,7 @@ private fun AppearanceCamouflageSubScreen(
                         ) {
                             Text(
                                 text = gestureTestFeedback
-                                    ?: "👆 Test Area: Try your ${selectedGestureType.displayName.lowercase()} here",
+                                    ?: "Test Area: Try your ${selectedGestureType.displayName.lowercase()} here",
                                 color = if (gestureTestFeedback != null) Color(0xFF30D158) else Color(0xFF8E8E93),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
@@ -1893,10 +1911,10 @@ private fun AppearanceCamouflageSubScreen(
         item {
             SettingsSection(title = "GALLERY SECRET SHORTCUTS") {
                 SettingsSwitchTile(
-                    icon = "🔒",
+                    iconVector = Icons.Rounded.Lock,
                     iconBg = Color(0xFF1B2E24),
                     title = "Secret Vault via Settings Long-Press",
-                    subtitle = if (isLongPressVaultEnabled) "Hold ⚙️ in gallery to open Secret Vault • Lock buttons hidden" else "Standard lock button shown in gallery",
+                    subtitle = if (isLongPressVaultEnabled) "Hold Settings icon in gallery to open Secret Vault • Lock buttons hidden" else "Standard lock button shown in gallery",
                     checked = isLongPressVaultEnabled,
                     onCheckedChange = onToggleLongPressVault,
                 )
@@ -1907,7 +1925,7 @@ private fun AppearanceCamouflageSubScreen(
         item {
             SettingsSection(title = "EMERGENCY RECOVERY ROUTES") {
                 SettingsTile(
-                    icon = "📞",
+                    iconVector = Icons.Rounded.Phone,
                     iconBg = Color(0xFF1B2E24),
                     title = "Emergency Dialer Code",
                     subtitle = "Dial *#*#82858#*#* from phone keypad to launch app even if hidden",
@@ -1917,7 +1935,7 @@ private fun AppearanceCamouflageSubScreen(
                 )
                 SettingsDivider()
                 SettingsTile(
-                    icon = "🌐",
+                    iconVector = Icons.Rounded.Language,
                     iconBg = Color(0xFF1B2E24),
                     title = "Browser Recovery Route",
                     subtitle = "Open vaultsync://open in mobile browser to launch main app",
@@ -1927,7 +1945,7 @@ private fun AppearanceCamouflageSubScreen(
                 )
                 SettingsDivider()
                 SettingsTile(
-                    icon = "📖",
+                    iconVector = Icons.Rounded.MenuBook,
                     iconBg = Color(0xFF1B2E24),
                     title = "Lockout Recovery Guide",
                     subtitle = "Complete instructions for recovering hidden or locked app",
@@ -1942,7 +1960,7 @@ private fun AppearanceCamouflageSubScreen(
         item {
             SettingsSection(title = "THEME & DISPLAY") {
                 SettingsTile(
-                    icon = "🎨",
+                    iconVector = Icons.Rounded.Palette,
                     iconBg = Color(0xFF1F1F24),
                     title = "Pure AMOLED Black Theme",
                     subtitle = "True #000000 dark canvas with zero OLED backlight draw",
@@ -1961,7 +1979,8 @@ private fun AppearanceCamouflageSubScreen(
  */
 @Composable
 private fun ModeOptionCard(
-    icon: String,
+    icon: String = "",
+    iconVector: ImageVector? = null,
     title: String,
     subtitle: String,
     isSelected: Boolean,
@@ -1994,7 +2013,16 @@ private fun ModeOptionCard(
                     .background(if (isSelected) Color(0xFF223A2A) else Color(0xFF1E1E22)),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(icon, fontSize = 20.sp)
+                if (iconVector != null) {
+                    Icon(
+                        imageVector = iconVector,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp),
+                    )
+                } else {
+                    Text(icon, fontSize = 20.sp)
+                }
             }
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -2231,12 +2259,23 @@ private fun PcAccessSubScreen(
                             containerColor = if (isRunning) Color(0xFF245B38) else Color(0xFF1A2A3A),
                         ),
                     ) {
-                        Text(
-                            text = "Open Full Screen & QR Code →",
-                            color = if (isRunning) Color(0xFF30D158) else Color(0xFF64D2FF),
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 14.sp,
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Text(
+                                text = "Open Full Screen & QR Code",
+                                color = if (isRunning) Color(0xFF30D158) else Color(0xFF64D2FF),
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 14.sp,
+                            )
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                                contentDescription = null,
+                                tint = if (isRunning) Color(0xFF30D158) else Color(0xFF64D2FF),
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
                     }
                 }
             }
@@ -2245,7 +2284,7 @@ private fun PcAccessSubScreen(
         item {
             SettingsSection(title = "WI-FI SERVER CONFIGURATION") {
                 SettingsTile(
-                    icon = "🔌",
+                    iconVector = Icons.Rounded.Power,
                     iconBg = Color(0xFF162534),
                     title = "Server Port & Subnet Policy",
                     subtitle = "Embedded Ktor HTTP server on port 8080 (Private Subnet Protected)",
@@ -2255,7 +2294,7 @@ private fun PcAccessSubScreen(
                 )
                 SettingsDivider()
                 SettingsTile(
-                    icon = "🛡️",
+                    iconVector = Icons.Rounded.Shield,
                     iconBg = Color(0xFF162534),
                     title = "Local Subnet Isolation",
                     subtitle = "Server strictly operates on local Wi-Fi. External web pages cannot bridge to it.",
@@ -2269,7 +2308,7 @@ private fun PcAccessSubScreen(
         item {
             SettingsSection(title = "AUTHENTICATION & SESSION CONTROLS") {
                 SettingsTile(
-                    icon = "🔑",
+                    iconVector = Icons.Rounded.Key,
                     iconBg = Color(0xFF162534),
                     title = "Dynamic Passcode Pairing",
                     subtitle = "Each session generates a temporary 6-digit PIN required on the browser",
@@ -2279,7 +2318,7 @@ private fun PcAccessSubScreen(
                 )
                 SettingsDivider()
                 SettingsTile(
-                    icon = "🔐",
+                    iconVector = Icons.Rounded.Lock,
                     iconBg = Color(0xFF162534),
                     title = "Strict Vault Elevation",
                     subtitle = "Vault media stays encrypted until Master PIN is submitted in the browser",
@@ -2289,7 +2328,7 @@ private fun PcAccessSubScreen(
                 )
                 SettingsDivider()
                 SettingsTile(
-                    icon = "⚡",
+                    iconVector = Icons.Rounded.Bolt,
                     iconBg = Color(0xFF162534),
                     title = "Zero-Cloud Peer-to-Peer",
                     subtitle = "100% direct connection between phone and computer over Wi-Fi",
@@ -2339,7 +2378,12 @@ private fun AboutSubScreen(
                             .background(Color(0xFF1F2420)),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text("🛡️", fontSize = 32.sp)
+                        Icon(
+                            imageVector = Icons.Rounded.Shield,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(32.dp),
+                        )
                     }
                     Spacer(modifier = Modifier.height(14.dp))
                     Text(
@@ -2350,7 +2394,7 @@ private fun AboutSubScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Version 0.1.0 • Security Verified",
+                        text = "Version 1.0.2 • Security Verified",
                         color = Color(0xFF8E8E93),
                         fontSize = 13.sp,
                     )
@@ -2361,7 +2405,7 @@ private fun AboutSubScreen(
         item {
             SettingsSection(title = "DIAGNOSTICS & SYSTEM PERMISSIONS") {
                 SettingsTile(
-                    icon = "📋",
+                    iconVector = Icons.Rounded.Assignment,
                     iconBg = Color(0xFF24242A),
                     title = "Device Permissions Overview",
                     subtitle = "Inspect storage, biometric, and network permission grants",
@@ -2371,7 +2415,7 @@ private fun AboutSubScreen(
                 )
                 SettingsDivider()
                 SettingsTile(
-                    icon = "🛡️",
+                    iconVector = Icons.Rounded.Shield,
                     iconBg = Color(0xFF24242A),
                     title = "Cryptographic Architecture",
                     subtitle = "AES-256-GCM + Android KeyStore hardware root of trust",
@@ -2385,17 +2429,17 @@ private fun AboutSubScreen(
         item {
             SettingsSection(title = "PRIVACY ASSURANCE & LICENSES") {
                 SettingsTile(
-                    icon = "🔒",
+                    iconVector = Icons.Rounded.Lock,
                     iconBg = Color(0xFF1B2E24),
                     title = "100% Zero-Cloud Pledge",
                     subtitle = "No analytics, no telemetry, no tracking, zero cloud servers",
-                    status = "Verified ✅",
+                    status = "Verified",
                     statusColor = Color(0xFF30D158),
                     isClickable = false,
                 )
                 SettingsDivider()
                 SettingsTile(
-                    icon = "ℹ️",
+                    iconVector = Icons.Rounded.Info,
                     iconBg = Color(0xFF24242A),
                     title = "App Architecture & Licenses",
                     subtitle = "Jetpack Compose, Room, Ktor, Coil, ExoPlayer/Media3",
@@ -2641,7 +2685,8 @@ private fun SettingsSection(
 
 @Composable
 private fun SettingsTile(
-    icon: String,
+    icon: String = "",
+    iconVector: ImageVector? = null,
     iconBg: Color = Color(0xFF2C2C2E),
     title: String,
     subtitle: String,
@@ -2670,7 +2715,16 @@ private fun SettingsTile(
                 .background(iconBg),
             contentAlignment = Alignment.Center,
         ) {
-            Text(icon, fontSize = 18.sp)
+            if (iconVector != null) {
+                Icon(
+                    imageVector = iconVector,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp),
+                )
+            } else {
+                Text(icon, fontSize = 18.sp)
+            }
         }
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -2703,11 +2757,11 @@ private fun SettingsTile(
             }
             if (isClickable) {
                 Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = "›",
-                    color = Color(0xFF636366),
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
+                Icon(
+                    imageVector = Icons.Rounded.ChevronRight,
+                    contentDescription = null,
+                    tint = Color(0xFF636366),
+                    modifier = Modifier.size(18.dp),
                 )
             }
         }
@@ -2716,7 +2770,8 @@ private fun SettingsTile(
 
 @Composable
 private fun SettingsSwitchTile(
-    icon: String,
+    icon: String = "",
+    iconVector: ImageVector? = null,
     iconBg: Color = Color(0xFF2C2C2E),
     title: String,
     subtitle: String,
@@ -2737,7 +2792,16 @@ private fun SettingsSwitchTile(
                 .background(iconBg),
             contentAlignment = Alignment.Center,
         ) {
-            Text(icon, fontSize = 18.sp)
+            if (iconVector != null) {
+                Icon(
+                    imageVector = iconVector,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp),
+                )
+            } else {
+                Text(icon, fontSize = 18.sp)
+            }
         }
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -2848,7 +2912,12 @@ private fun ChangeVaultPinDialog(
                         .background(Color(0xFF192538)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("🔐", fontSize = 20.sp)
+                    Icon(
+                        imageVector = Icons.Rounded.Lock,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp),
+                    )
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
@@ -2902,7 +2971,12 @@ private fun ChangeVaultPinDialog(
                         visualTransformation = if (showCurrentPin) VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
                             IconButton(onClick = { showCurrentPin = !showCurrentPin }) {
-                                Text(if (showCurrentPin) "👁️" else "🙈", fontSize = 16.sp)
+                                Icon(
+                                    imageVector = if (showCurrentPin) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                                    contentDescription = if (showCurrentPin) "Hide PIN" else "Show PIN",
+                                    tint = Color(0xFF8E8E93),
+                                    modifier = Modifier.size(20.dp),
+                                )
                             }
                         },
                         colors = OutlinedTextFieldDefaults.colors(
@@ -2931,7 +3005,12 @@ private fun ChangeVaultPinDialog(
                     visualTransformation = if (showNewPin) VisualTransformation.None else PasswordVisualTransformation(),
                     trailingIcon = {
                         IconButton(onClick = { showNewPin = !showNewPin }) {
-                            Text(if (showNewPin) "👁️" else "🙈", fontSize = 16.sp)
+                            Icon(
+                                imageVector = if (showNewPin) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                                contentDescription = if (showNewPin) "Hide PIN" else "Show PIN",
+                                tint = Color(0xFF8E8E93),
+                                modifier = Modifier.size(20.dp),
+                            )
                         }
                     },
                     colors = OutlinedTextFieldDefaults.colors(
@@ -2959,7 +3038,12 @@ private fun ChangeVaultPinDialog(
                     visualTransformation = if (showConfirmPin) VisualTransformation.None else PasswordVisualTransformation(),
                     trailingIcon = {
                         IconButton(onClick = { showConfirmPin = !showConfirmPin }) {
-                            Text(if (showConfirmPin) "👁️" else "🙈", fontSize = 16.sp)
+                            Icon(
+                                imageVector = if (showConfirmPin) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                                contentDescription = if (showConfirmPin) "Hide PIN" else "Show PIN",
+                                tint = Color(0xFF8E8E93),
+                                modifier = Modifier.size(20.dp),
+                            )
                         }
                     },
                     colors = OutlinedTextFieldDefaults.colors(
@@ -3072,7 +3156,12 @@ private fun BiometricAuthPinDialog(
         containerColor = Color(0xFF1C1C1E),
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("👆", fontSize = 22.sp)
+                Icon(
+                    imageVector = Icons.Rounded.Fingerprint,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(22.dp),
+                )
                 Spacer(modifier = Modifier.width(10.dp))
                 Text("Enable Biometrics", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
             }
@@ -3101,7 +3190,12 @@ private fun BiometricAuthPinDialog(
                     visualTransformation = if (showPin) VisualTransformation.None else PasswordVisualTransformation(),
                     trailingIcon = {
                         IconButton(onClick = { showPin = !showPin }) {
-                            Text(if (showPin) "👁️" else "🙈", fontSize = 16.sp)
+                            Icon(
+                                imageVector = if (showPin) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                                contentDescription = if (showPin) "Hide PIN" else "Show PIN",
+                                tint = Color(0xFF8E8E93),
+                                modifier = Modifier.size(20.dp),
+                            )
                         }
                     },
                     colors = OutlinedTextFieldDefaults.colors(
@@ -3161,7 +3255,12 @@ private fun RecoveryKeyPinPromptDialog(
         containerColor = Color(0xFF1C1C1E),
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("🔑", fontSize = 22.sp)
+                Icon(
+                    imageVector = Icons.Rounded.Key,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(22.dp),
+                )
                 Spacer(modifier = Modifier.width(10.dp))
                 Text("Master Recovery Key", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
             }
@@ -3190,7 +3289,12 @@ private fun RecoveryKeyPinPromptDialog(
                     visualTransformation = if (showPin) VisualTransformation.None else PasswordVisualTransformation(),
                     trailingIcon = {
                         IconButton(onClick = { showPin = !showPin }) {
-                            Text(if (showPin) "👁️" else "🙈", fontSize = 16.sp)
+                            Icon(
+                                imageVector = if (showPin) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                                contentDescription = if (showPin) "Hide PIN" else "Show PIN",
+                                tint = Color(0xFF8E8E93),
+                                modifier = Modifier.size(20.dp),
+                            )
                         }
                     },
                     colors = OutlinedTextFieldDefaults.colors(

@@ -17,9 +17,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Fingerprint
+import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -117,7 +121,12 @@ fun SecretAppEntryDialog(
                         .background(Color(0xFF32D74B)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("🛡️", fontSize = 18.sp)
+                    Icon(
+                        imageVector = Icons.Rounded.Shield,
+                        contentDescription = null,
+                        tint = Color.Black,
+                        modifier = Modifier.size(20.dp),
+                    )
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
@@ -203,7 +212,18 @@ fun SecretAppEntryDialog(
                             onClick = { triggerBiometric() },
                             modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Text("👆 Unlock with Biometrics", color = Color.White, fontSize = 13.sp)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Fingerprint,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                                Text("Unlock with Biometrics", color = Color.White, fontSize = 13.sp)
+                            }
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                     }

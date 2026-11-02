@@ -22,6 +22,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.Backspace
+import androidx.compose.material.icons.rounded.Fingerprint
+import androidx.compose.material.icons.rounded.FolderSpecial
+import androidx.compose.material.icons.rounded.Key
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -45,7 +54,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -144,7 +155,11 @@ fun VaultLockScreen(
                     .padding(12.dp)
                     .align(Alignment.TopStart),
             ) {
-                Text("←", fontSize = 24.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.White,
+                )
             }
 
             Column(
@@ -159,12 +174,15 @@ fun VaultLockScreen(
                 modifier = Modifier
                     .size(80.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
+                    .background(Color(0xFF1C1C1E))
+                    .border(1.5.dp, Color.White.copy(alpha = 0.2f), CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = if (state.isInitialized) "🔒" else "🛡️",
-                    fontSize = 38.sp,
+                Icon(
+                    imageVector = if (state.isInitialized) Icons.Rounded.Lock else Icons.Rounded.Shield,
+                    contentDescription = if (state.isInitialized) "Vault Locked" else "Set Up Vault",
+                    tint = Color.White,
+                    modifier = Modifier.size(38.dp),
                 )
             }
 
@@ -238,7 +256,12 @@ fun VaultLockScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("🛡️", fontSize = 28.sp)
+                            Icon(
+                                imageVector = Icons.Rounded.FolderSpecial,
+                                contentDescription = null,
+                                tint = Color(0xFF38BDF8),
+                                modifier = Modifier.size(28.dp),
+                            )
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text(
@@ -268,7 +291,17 @@ fun VaultLockScreen(
                             shape = RoundedCornerShape(10.dp),
                             modifier = Modifier.fillMaxWidth().height(44.dp),
                         ) {
-                            Text("Restore Detected Vault 🔑", fontWeight = FontWeight.Bold)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Key,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Text("Restore Detected Vault", fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }
@@ -367,7 +400,17 @@ fun VaultLockScreen(
                         modifier = Modifier.fillMaxWidth().height(48.dp),
                         shape = RoundedCornerShape(12.dp),
                     ) {
-                        Text("Unlock with Biometrics 👆")
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Fingerprint,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                            )
+                            Text("Unlock with Biometrics")
+                        }
                     }
                 }
             } else {
@@ -468,12 +511,23 @@ fun VaultLockScreen(
                 TextButton(
                     onClick = { viewModel.openForgotPinDialog() },
                 ) {
-                    Text(
-                        text = "Forgot PIN? Recover Vault 🔑",
-                        color = Color(0xFF0A84FF),
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp,
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Key,
+                            contentDescription = null,
+                            tint = Color(0xFF0A84FF),
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Text(
+                            text = "Forgot PIN? Recover Vault",
+                            color = Color(0xFF0A84FF),
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp,
+                        )
+                    }
                 }
             }
 
@@ -511,11 +565,23 @@ fun VaultLockScreen(
                         }
                     },
                 ) {
-                    Text(
-                        text = "Scan Documents for Existing Vault 🔍",
-                        color = Color(0xFF38BDF8),
-                        fontSize = 13.sp,
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Search,
+                            contentDescription = null,
+                            tint = Color(0xFF38BDF8),
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Text(
+                            text = "Scan Documents for Existing Vault",
+                            color = Color(0xFF38BDF8),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                        )
+                    }
                 }
             }
         }
@@ -584,14 +650,42 @@ fun NumericKeypad(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (onBiometricClick != null) {
-                KeypadIconButton(text = "👆", onClick = onBiometricClick)
+                Box(
+                    modifier = Modifier
+                        .size(68.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                        .clickable(onClick = onBiometricClick),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Fingerprint,
+                        contentDescription = "Biometric unlock",
+                        tint = Color.White,
+                        modifier = Modifier.size(28.dp),
+                    )
+                }
             } else {
                 Spacer(modifier = Modifier.size(68.dp))
             }
 
             KeypadButton(text = "0", onClick = { onDigitClick("0") })
 
-            KeypadIconButton(text = "⌫", onClick = onBackspaceClick)
+            Box(
+                modifier = Modifier
+                    .size(68.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                    .clickable(onClick = onBackspaceClick),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.Backspace,
+                    contentDescription = "Backspace",
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
         }
 
         if (showConfirm) {

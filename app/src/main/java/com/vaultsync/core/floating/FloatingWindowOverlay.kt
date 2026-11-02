@@ -29,14 +29,23 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.VolumeOff
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
+import androidx.compose.material.icons.rounded.BrightnessMedium
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Movie
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import com.vaultsync.core.designsystem.RotaryBrightnessDial
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -256,17 +265,21 @@ private fun FloatingWindowItemView(
                 .size(54.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                text = if (item.isVideo) "🎬" else "🖼️",
-                fontSize = 24.sp,
+            Icon(
+                imageVector = if (item.isVideo) Icons.Rounded.Movie else Icons.Rounded.Image,
+                contentDescription = if (item.isVideo) "Video" else "Image",
+                tint = Color.White,
+                modifier = Modifier.size(24.dp),
             )
             if (item.source == FloatingMediaSource.VAULT) {
-                Text(
-                    text = "🔒",
-                    fontSize = 10.sp,
+                Icon(
+                    imageVector = Icons.Rounded.Lock,
+                    contentDescription = "Encrypted",
+                    tint = Color(0xFFFFD54F),
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(4.dp),
+                        .padding(4.dp)
+                        .size(12.dp),
                 )
             }
         }
@@ -303,13 +316,20 @@ private fun FloatingWindowItemView(
                     .padding(horizontal = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = if (item.isVideo) "🎬" else "🖼️",
-                    fontSize = 14.sp,
+                Icon(
+                    imageVector = if (item.isVideo) Icons.Rounded.Movie else Icons.Rounded.Image,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.85f),
+                    modifier = Modifier.size(15.dp),
                 )
                 if (item.source == FloatingMediaSource.VAULT) {
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("🔒", fontSize = 11.sp)
+                    Icon(
+                        imageVector = Icons.Rounded.Lock,
+                        contentDescription = "Vault Item",
+                        tint = Color(0xFFFFD54F),
+                        modifier = Modifier.size(12.dp),
+                    )
                 }
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
@@ -361,7 +381,12 @@ private fun FloatingWindowItemView(
                         .clickable { manager.closeWindow(item.id) },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("✕", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Icon(
+                        imageVector = Icons.Rounded.Close,
+                        contentDescription = "Close",
+                        tint = Color.White,
+                        modifier = Modifier.size(15.dp),
+                    )
                 }
             }
 
@@ -389,15 +414,18 @@ private fun FloatingWindowItemView(
                                 manager.updateSize(item.id, dragAmount.x, dragAmount.y)
                             }
                         }
-                        .padding(4.dp),
+                        .padding(6.dp),
                     contentAlignment = Alignment.BottomEnd,
                 ) {
-                    Text(
-                        text = "↘",
-                        color = Color.White.copy(alpha = 0.6f),
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
+                    Canvas(modifier = Modifier.size(14.dp)) {
+                        val w = size.width
+                        val h = size.height
+                        val stroke = 1.6.dp.toPx()
+                        val color = Color.White.copy(alpha = 0.5f)
+                        drawLine(color, Offset(w * 0.7f, h), Offset(w, h * 0.7f), strokeWidth = stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                        drawLine(color, Offset(w * 0.35f, h), Offset(w, h * 0.35f), strokeWidth = stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                        drawLine(color, Offset(0f, h), Offset(w, 0f), strokeWidth = stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                    }
                 }
             }
         }
@@ -469,7 +497,7 @@ private fun FloatingVideoContent(
 
     // Brightness States
     var brightness by remember { mutableFloatStateOf(1.0f) }
-    var showBrightnessSlider by remember { mutableStateOf(false) }
+    var showBrightnessDial by remember { mutableStateOf(false) }
     var showBrightnessBadge by remember { mutableStateOf(false) }
 
     var scale by remember { mutableFloatStateOf(1f) }
@@ -525,9 +553,9 @@ private fun FloatingVideoContent(
         }
     }
 
-    // Auto-hide controls after 3 seconds of inactivity (pause auto-hide while adjusting brightness slider)
-    LaunchedEffect(showControls, showBrightnessSlider) {
-        if (showControls && !showBrightnessSlider) {
+    // Auto-hide controls after 3 seconds of inactivity (pause auto-hide while adjusting brightness dial)
+    LaunchedEffect(showControls, showBrightnessDial) {
+        if (showControls && !showBrightnessDial) {
             delay(3000)
             showControls = false
         }
@@ -633,10 +661,11 @@ private fun FloatingVideoContent(
                         },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(
-                        text = if (isPlaying) "⏸" else "▶",
-                        color = Color.White,
-                        fontSize = 20.sp,
+                    Icon(
+                        imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                        contentDescription = if (isPlaying) "Pause" else "Play",
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp),
                     )
                 }
             }
@@ -657,61 +686,46 @@ private fun FloatingVideoContent(
                     .padding(horizontal = 12.dp, vertical = 6.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = "☀️ ${(brightness * 100).toInt()}%",
-                    color = Color.White,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-        }
-
-        // Expandable Brightness Slider
-        AnimatedVisibility(
-            visible = showBrightnessSlider,
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 44.dp, start = 8.dp, end = 8.dp)
-                .fillMaxWidth(),
-        ) {
-            Surface(
-                shape = RoundedCornerShape(10.dp),
-                color = Color.Black.copy(alpha = 0.88f),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)),
-            ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
                 ) {
-                    Text("🌙", fontSize = 11.sp)
-                    Slider(
-                        value = brightness,
-                        onValueChange = { newVal ->
-                            brightness = newVal
-                            showBrightnessBadge = true
-                        },
-                        valueRange = 0.1f..1.0f,
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(horizontal = 4.dp),
-                        colors = SliderDefaults.colors(
-                            thumbColor = MaterialTheme.colorScheme.primary,
-                            activeTrackColor = MaterialTheme.colorScheme.primary,
-                            inactiveTrackColor = Color.DarkGray,
-                        ),
+                    Icon(
+                        imageVector = Icons.Rounded.BrightnessMedium,
+                        contentDescription = null,
+                        tint = Color(0xFFFFD54F),
+                        modifier = Modifier.size(15.dp),
                     )
-                    Text("☀️", fontSize = 11.sp)
-                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = "${(brightness * 100).toInt()}%",
                         color = Color.White,
-                        fontSize = 10.sp,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                     )
                 }
             }
+        }
+
+        // Interactive Center Rotary Brightness Dial
+        AnimatedVisibility(
+            visible = showBrightnessDial,
+            enter = fadeIn() + scaleIn(),
+            exit = fadeOut() + scaleOut(),
+            modifier = Modifier.align(Alignment.Center),
+        ) {
+            RotaryBrightnessDial(
+                brightness = brightness,
+                onBrightnessChange = { newVal ->
+                    brightness = newVal
+                    showBrightnessBadge = true
+                },
+                dialSize = 145.dp,
+                onResetToAuto = {
+                    brightness = 0.7f
+                    showBrightnessBadge = true
+                },
+                onDismiss = { showBrightnessDial = false },
+            )
         }
 
         // Bottom Controls Row: Mute, Rotate & Brightness (always accessible)
@@ -731,9 +745,11 @@ private fun FloatingVideoContent(
                     .clickable { manager.toggleMute(item.id) },
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = if (item.isMuted) "🔇" else "🔊",
-                    fontSize = 14.sp,
+                Icon(
+                    imageVector = if (item.isMuted) Icons.AutoMirrored.Rounded.VolumeOff else Icons.AutoMirrored.Rounded.VolumeUp,
+                    contentDescription = if (item.isMuted) "Unmute" else "Mute",
+                    tint = if (item.isMuted) Color(0xFFEF5350) else Color.White,
+                    modifier = Modifier.size(16.dp),
                 )
             }
 
@@ -749,21 +765,23 @@ private fun FloatingVideoContent(
                 RotateMediaIcon(modifier = Modifier.size(15.dp))
             }
 
-            // Brightness Toggle Button
+            // Brightness Dial Toggle Button
             Box(
                 modifier = Modifier
                     .size(30.dp)
                     .clip(CircleShape)
-                    .background(if (showBrightnessSlider) MaterialTheme.colorScheme.primary else Color.Black.copy(alpha = 0.65f))
+                    .background(if (showBrightnessDial) Color(0xFFFFB300) else Color.Black.copy(alpha = 0.65f))
                     .clickable {
-                        showBrightnessSlider = !showBrightnessSlider
+                        showBrightnessDial = !showBrightnessDial
                         showControls = true
                     },
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = "☀️",
-                    fontSize = 13.sp,
+                Icon(
+                    imageVector = Icons.Rounded.BrightnessMedium,
+                    contentDescription = "Brightness Dial",
+                    tint = if (showBrightnessDial) Color.Black else Color.White,
+                    modifier = Modifier.size(16.dp),
                 )
             }
         }
