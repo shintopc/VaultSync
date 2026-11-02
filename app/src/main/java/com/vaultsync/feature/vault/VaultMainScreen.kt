@@ -1343,15 +1343,15 @@ private fun VaultAlbumPreviewRow(
             } else {
                 // Slot 1
                 val item0 = previewItems.getOrNull(0)
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .aspectRatio(1f)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(Color(0xFF1C1C1E))
-                        .clickable { if (item0 != null) onItemClick(0) else onAlbumClick() },
-                ) {
-                    if (item0 != null) {
+                if (item0 != null) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .aspectRatio(1f)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(Color(0xFF1C1C1E))
+                            .clickable { onItemClick(0) },
+                    ) {
                         VaultEntryThumbnail(
                             entry = item0,
                             viewModel = viewModel,
@@ -1365,19 +1365,21 @@ private fun VaultAlbumPreviewRow(
                             )
                         }
                     }
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
                 }
 
                 // Slot 2
                 val item1 = previewItems.getOrNull(1)
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .aspectRatio(1f)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(Color(0xFF1C1C1E))
-                        .clickable { if (item1 != null) onItemClick(1) else onAlbumClick() },
-                ) {
-                    if (item1 != null) {
+                if (item1 != null) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .aspectRatio(1f)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(Color(0xFF1C1C1E))
+                            .clickable { onItemClick(1) },
+                    ) {
                         VaultEntryThumbnail(
                             entry = item1,
                             viewModel = viewModel,
@@ -1391,19 +1393,21 @@ private fun VaultAlbumPreviewRow(
                             )
                         }
                     }
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
                 }
 
                 // Slot 3
                 val item2 = previewItems.getOrNull(2)
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .aspectRatio(1f)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(Color(0xFF1C1C1E))
-                        .clickable { if (item2 != null) onItemClick(2) else onAlbumClick() },
-                ) {
-                    if (item2 != null) {
+                if (item2 != null) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .aspectRatio(1f)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(Color(0xFF1C1C1E))
+                            .clickable { if (totalCount <= 3) onItemClick(2) else onAlbumClick() },
+                    ) {
                         VaultEntryThumbnail(
                             entry = item2,
                             viewModel = viewModel,
@@ -1432,6 +1436,8 @@ private fun VaultAlbumPreviewRow(
                             }
                         }
                     }
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
                 }
             }
         }

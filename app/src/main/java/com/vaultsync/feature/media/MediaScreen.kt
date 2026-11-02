@@ -1122,110 +1122,133 @@ private fun AlbumPreviewRow(
             val previewItems = folder.previewItems
             val totalCount = folder.itemCount
 
-            // Preview 1
-            val item0 = previewItems.getOrNull(0)
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .aspectRatio(1f)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Color(0xFF1C1C1E))
-                    .clickable {
-                        if (item0 != null) onItemClick(0) else onAlbumClick()
-                    },
-            ) {
+            if (previewItems.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .aspectRatio(1f)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color(0xFF1C1C1E))
+                        .clickable(onClick = onAlbumClick),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.FolderOpen,
+                        contentDescription = folder.name,
+                        tint = Color(0xFF8E8E93),
+                        modifier = Modifier.size(36.dp),
+                    )
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.weight(1f))
+            } else {
+                // Preview 1
+                val item0 = previewItems.getOrNull(0)
                 if (item0?.uri != null) {
-                    AsyncImage(
-                        model = item0.uri,
-                        contentDescription = folder.name,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop,
-                    )
-                    if (item0.category == MediaCategory.Videos) {
-                        VideoDurationBadge(
-                            durationMillis = item0.durationMillis,
-                            modifier = Modifier
-                                .align(Alignment.BottomStart)
-                                .padding(8.dp),
-                        )
-                    }
-                }
-            }
-
-            // Preview 2
-            val item1 = previewItems.getOrNull(1)
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .aspectRatio(1f)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Color(0xFF1C1C1E))
-                    .clickable {
-                        if (item1 != null) onItemClick(1) else onAlbumClick()
-                    },
-            ) {
-                if (item1?.uri != null) {
-                    AsyncImage(
-                        model = item1.uri,
-                        contentDescription = folder.name,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop,
-                    )
-                    if (item1.category == MediaCategory.Videos) {
-                        VideoDurationBadge(
-                            durationMillis = item1.durationMillis,
-                            modifier = Modifier
-                                .align(Alignment.BottomStart)
-                                .padding(8.dp),
-                        )
-                    }
-                }
-            }
-
-            // Preview 3 (with +N overlay if remaining count > 0)
-            val item2 = previewItems.getOrNull(2)
-            val remainingCount = totalCount - 2
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .aspectRatio(1f)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Color(0xFF1C1C1E))
-                    .clickable(onClick = onAlbumClick),
-            ) {
-                if (item2?.uri != null) {
-                    AsyncImage(
-                        model = item2.uri,
-                        contentDescription = folder.name,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop,
-                    )
-                }
-
-                // If album has more items than 2 shown, show +N count overlay!
-                if (remainingCount > 0) {
                     Box(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.55f)),
-                        contentAlignment = Alignment.Center,
+                            .weight(1f)
+                            .aspectRatio(1f)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(Color(0xFF1C1C1E))
+                            .clickable { onItemClick(0) },
                     ) {
-                        Text(
-                            text = "+$remainingCount",
-                            color = Color.White,
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
+                        AsyncImage(
+                            model = item0.uri,
+                            contentDescription = folder.name,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop,
                         )
+                        if (item0.category == MediaCategory.Videos) {
+                            VideoDurationBadge(
+                                durationMillis = item0.durationMillis,
+                                modifier = Modifier
+                                    .align(Alignment.BottomStart)
+                                    .padding(8.dp),
+                            )
+                        }
                     }
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
                 }
 
-                if (item2?.category == MediaCategory.Videos) {
-                    VideoDurationBadge(
-                        durationMillis = item2.durationMillis,
+                // Preview 2
+                val item1 = previewItems.getOrNull(1)
+                if (item1?.uri != null) {
+                    Box(
                         modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .padding(8.dp),
-                    )
+                            .weight(1f)
+                            .aspectRatio(1f)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(Color(0xFF1C1C1E))
+                            .clickable { onItemClick(1) },
+                    ) {
+                        AsyncImage(
+                            model = item1.uri,
+                            contentDescription = folder.name,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop,
+                        )
+                        if (item1.category == MediaCategory.Videos) {
+                            VideoDurationBadge(
+                                durationMillis = item1.durationMillis,
+                                modifier = Modifier
+                                    .align(Alignment.BottomStart)
+                                    .padding(8.dp),
+                            )
+                        }
+                    }
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+
+                // Preview 3 (with +N overlay if remaining count > 0)
+                val item2 = previewItems.getOrNull(2)
+                if (item2?.uri != null) {
+                    val remainingCount = totalCount - 2
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .aspectRatio(1f)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(Color(0xFF1C1C1E))
+                            .clickable(onClick = onAlbumClick),
+                    ) {
+                        AsyncImage(
+                            model = item2.uri,
+                            contentDescription = folder.name,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop,
+                        )
+
+                        // If album has more items than 2 shown, show +N count overlay!
+                        if (remainingCount > 0) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = 0.55f)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = "+$remainingCount",
+                                    color = Color.White,
+                                    fontSize = 22.sp,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
+                        }
+
+                        if (item2.category == MediaCategory.Videos) {
+                            VideoDurationBadge(
+                                durationMillis = item2.durationMillis,
+                                modifier = Modifier
+                                    .align(Alignment.BottomStart)
+                                    .padding(8.dp),
+                            )
+                        }
+                    }
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
                 }
             }
         }

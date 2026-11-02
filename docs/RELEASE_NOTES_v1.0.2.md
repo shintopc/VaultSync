@@ -38,6 +38,11 @@ We are thrilled to announce **VaultSync v1.0.2**, delivering a comprehensive **P
 
 ---
 
+### 🖼️ 5. Dynamic Album Preview Layout Fix
+- **Eliminated Blank Grey Squares**: Fixed an issue where folders containing fewer than 3 media files displayed blank grey placeholder boxes. Albums with 1 file now cleanly render only that 1 thumbnail (maintaining proportional 1/3 row aspect ratio), albums with 2 files display only 2 thumbnails, and empty folders render an elegant folder icon.
+
+---
+
 ### 📦 Release Asset Verification
 
 - **APK File**: `app-release.apk`
@@ -47,5 +52,5 @@ We are thrilled to announce **VaultSync v1.0.2**, delivering a comprehensive **P
 - **Target SDK**: Android 16 (API 37) / Min SDK: Android 8.0 (API 26)
 - **Signer**: `CN=VaultSync, OU=Production, O=VaultSync, C=US` (4096-bit RSA)
 - **Certificate SHA-256**: `1A:99:59:05:4D:3B:0E:F0:B0:B7:8B:32:3B:96:78:EC:4C:19:3B:38:23:1D:9A:08:88:0D:22:38:25:F9:BD:9D`
-- **APK SHA-256**: `48EAB8F9AC6718B27287E3A7357DA86EF0F9338A9CBDD972F1E788B0EA44BD77`
+- **APK SHA-256**: `CEEFF55FDD463120867B97A8A762434164E7AC043971E31988E5DB63B2C94484`
 
