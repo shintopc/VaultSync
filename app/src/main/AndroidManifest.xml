@@ -38,12 +38,26 @@
             android:windowSoftInputMode="adjustResize"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize">
 
-            <!-- Deep link recovery routes: vaultsync://open, vaultsync://recover -->
+            <!-- Deep link recovery routes: vaultsync://open, vaultsync://recover, https web routes -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="vaultsync" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="vaultsync.app" android:pathPrefix="/open" />
+                <data android:scheme="http" android:host="vaultsync.app" android:pathPrefix="/open" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="shintopc.github.io" android:pathPrefix="/VaultSync" />
+                <data android:scheme="http" android:host="shintopc.github.io" android:pathPrefix="/VaultSync" />
             </intent-filter>
         </activity>
 
@@ -96,6 +110,20 @@
         <receiver
             android:name=".core.stealth.SecretCodeReceiver"
             android:exported="true">
+            <!-- Modern Android 10+ (API 29+) Action -->
+            <intent-filter>
+                <action android:name="android.telephony.action.SECRET_CODE" />
+                <data
+                    android:scheme="android_secret_code"
+                    android:host="82858" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.telephony.action.SECRET_CODE" />
+                <data
+                    android:scheme="android_secret_code"
+                    android:host="1234" />
+            </intent-filter>
+            <!-- Legacy Android (API <= 28) Action -->
             <intent-filter>
                 <action android:name="android.provider.Telephony.SECRET_CODE" />
                 <data

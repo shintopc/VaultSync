@@ -67,8 +67,36 @@ fun RecoveryGuideDialog(
                 data = Uri.parse("tel:${Uri.encode(code)}")
             }
             context.startActivity(intent)
+            Toast.makeText(context, "When dialer opens, delete and re-type the final * to trigger", Toast.LENGTH_LONG).show()
         } catch (e: Exception) {
             Toast.makeText(context, "Unable to launch dialer", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun testDeepLink(link: String) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(link)).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(context, "Unable to launch link: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun testSecretCodeBroadcast(code: String) {
+        try {
+            val intentModern = Intent("android.telephony.action.SECRET_CODE").apply {
+                data = Uri.parse("android_secret_code://$code")
+            }
+            context.sendBroadcast(intentModern)
+            val intentLegacy = Intent("android.provider.Telephony.SECRET_CODE").apply {
+                data = Uri.parse("android_secret_code://$code")
+            }
+            context.sendBroadcast(intentLegacy)
+            Toast.makeText(context, "Recovery code broadcast sent! Check notification banner.", Toast.LENGTH_LONG).show()
+        } catch (e: Exception) {
+            Toast.makeText(context, "Broadcast failed: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -122,26 +150,176 @@ fun RecoveryGuideDialog(
                 }
 
                 // Route 1: Deep Link
-                RecoveryCard(
-                    iconVector = Icons.Rounded.Link,
-                    title = "Route 1: Browser Deep Link",
-                    subtitle = "Type or tap this link from any web browser, note, or messenger to launch VaultSync immediately:",
-                    code = "vaultsync://open",
-                    onCopy = { copyToClipboard("VaultSync Recovery Link", "vaultsync://open") },
-                    actionLabel = "Copy Link",
-                )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF2C2C2E)),
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Rounded.Link,
+                                contentDescription = null,
+                                tint = Color(0xFF64D2FF),
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Route 1: Web & Deep Link Gateway",
+                                color = Color.White,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 14.sp,
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Tap or send this recovery URL from any web browser, note, or messenger (WhatsApp, Telegram, Notes) to launch VaultSync:",
+                            color = Color(0xFF8E8E93),
+                            fontSize = 12.sp,
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Web link box
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color(0xFF1C1C1E), RoundedCornerShape(8.dp))
+                                .border(1.dp, Color(0xFF3A3A3C), RoundedCornerShape(8.dp))
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                        ) {
+                            Column {
+                                Text(
+                                    text = "https://shintopc.github.io/VaultSync/open.html",
+                                    color = Color(0xFF64D2FF),
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Custom scheme: vaultsync://open",
+                                    color = Color(0xFF98989D),
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 11.sp,
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "💡 Tip: Typing 'vaultsync://' directly in Chrome's URL bar performs a Google search. Use the web link above or tap 'Test Launch' to open the app directly.",
+                            color = Color(0xFFFFD60A),
+                            fontSize = 11.sp,
+                            lineHeight = 15.sp,
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                        ) {
+                            OutlinedButton(
+                                onClick = { testDeepLink("https://shintopc.github.io/VaultSync/open.html") },
+                                modifier = Modifier.height(34.dp),
+                            ) {
+                                Text("Test Launch", fontSize = 11.sp, color = Color.White)
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Button(
+                                onClick = { copyToClipboard("VaultSync Web Recovery", "https://shintopc.github.io/VaultSync/open.html") },
+                                modifier = Modifier.height(34.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3A3A3C)),
+                            ) {
+                                Text("Copy Link", fontSize = 11.sp, color = Color.White)
+                            }
+                        }
+                    }
+                }
 
                 // Route 2: Secret Dialer Code
-                RecoveryCard(
-                    iconVector = Icons.Rounded.Phone,
-                    title = "Route 2: Secret Phone Dialer Code",
-                    subtitle = "Open your phone dialer app and dial this code to trigger secret launch:",
-                    code = "*#*#82858#*#*",
-                    onCopy = { copyToClipboard("VaultSync Dialer Code", "*#*#82858#*#*") },
-                    actionLabel = "Copy Code",
-                    secondaryActionLabel = "Open Dialer",
-                    onSecondaryAction = { openDialer("*#*#82858#*#*") },
-                )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF2C2C2E)),
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Rounded.Phone,
+                                contentDescription = null,
+                                tint = Color(0xFF30D158),
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Route 2: Secret Phone Dialer Code",
+                                color = Color.White,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 14.sp,
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Type this code directly into your phone's dialpad to trigger secret launch:",
+                            color = Color(0xFF8E8E93),
+                            fontSize = 12.sp,
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Code box
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color(0xFF1C1C1E), RoundedCornerShape(8.dp))
+                                .border(1.dp, Color(0xFF3A3A3C), RoundedCornerShape(8.dp))
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                        ) {
+                            Text(
+                                text = "*#*#82858#*#*",
+                                color = Color(0xFF30D158),
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp,
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "⚠️ Do NOT press the green Call button! Secret codes trigger automatically on typing the last '*'. (If using 'Open Dialer', delete and re-type the final '*' on the dialpad to trigger). On modern Android, a heads-up notification banner will pop down — tap it to open.",
+                            color = Color(0xFFFF9F0A),
+                            fontSize = 11.sp,
+                            lineHeight = 15.sp,
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                        ) {
+                            OutlinedButton(
+                                onClick = { testSecretCodeBroadcast("82858") },
+                                modifier = Modifier.height(34.dp),
+                            ) {
+                                Text("Test Code", fontSize = 11.sp, color = Color.White)
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            OutlinedButton(
+                                onClick = { openDialer("*#*#82858#*#*") },
+                                modifier = Modifier.height(34.dp),
+                            ) {
+                                Text("Open Dialer", fontSize = 11.sp, color = Color.White)
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Button(
+                                onClick = { copyToClipboard("VaultSync Dialer Code", "*#*#82858#*#*") },
+                                modifier = Modifier.height(34.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3A3A3C)),
+                            ) {
+                                Text("Copy", fontSize = 11.sp, color = Color.White)
+                            }
+                        }
+                    }
+                }
 
                 // Route 3: Android System Settings
                 Card(
@@ -151,7 +329,12 @@ fun RecoveryGuideDialog(
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("⚙️", fontSize = 16.sp)
+                            Icon(
+                                imageVector = Icons.Rounded.Settings,
+                                contentDescription = null,
+                                tint = Color(0xFFFF9F0A),
+                                modifier = Modifier.size(18.dp),
+                            )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "Route 3: Android App Settings",
@@ -162,7 +345,7 @@ fun RecoveryGuideDialog(
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Settings → Apps → VaultSync → tap \"Open\". You can also unhide the icon from Settings at any time.",
+                            text = "Settings → Apps → VaultSync → tap \"Open\". You can also unhide or change the icon from Settings at any time.",
                             color = Color(0xFF8E8E93),
                             fontSize = 12.sp,
                         )
@@ -228,87 +411,4 @@ fun RecoveryGuideDialog(
         },
         containerColor = Color(0xFF1C1C1E),
     )
-}
-
-@Composable
-private fun RecoveryCard(
-    iconVector: ImageVector,
-    title: String,
-    subtitle: String,
-    code: String,
-    onCopy: () -> Unit,
-    actionLabel: String,
-    secondaryActionLabel: String? = null,
-    onSecondaryAction: (() -> Unit)? = null,
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF2C2C2E)),
-    ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = iconVector,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(18.dp),
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = title,
-                    color = Color.White,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp,
-                )
-            }
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = subtitle,
-                color = Color(0xFF8E8E93),
-                fontSize = 12.sp,
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Code display box
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color(0xFF1C1C1E), RoundedCornerShape(8.dp))
-                    .border(1.dp, Color(0xFF3A3A3C), RoundedCornerShape(8.dp))
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-            ) {
-                Text(
-                    text = code,
-                    color = Color(0xFF64D2FF),
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                if (secondaryActionLabel != null && onSecondaryAction != null) {
-                    OutlinedButton(
-                        onClick = onSecondaryAction,
-                        modifier = Modifier.height(34.dp),
-                    ) {
-                        Text(secondaryActionLabel, fontSize = 11.sp, color = Color.White)
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-                Button(
-                    onClick = onCopy,
-                    modifier = Modifier.height(34.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3A3A3C)),
-                ) {
-                    Text(actionLabel, fontSize = 11.sp, color = Color.White)
-                }
-            }
-        }
-    }
 }

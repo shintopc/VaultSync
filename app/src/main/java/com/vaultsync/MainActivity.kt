@@ -45,12 +45,27 @@ class MainActivity : FragmentActivity() {
         if (intent == null) return
         val isSecretDialer = intent.getBooleanExtra(SecretCodeReceiver.EXTRA_RECOVERY_TRIGGERED, false)
         val uri = intent.data
+        val prefs = StealthPreferences(this)
+
         if (isSecretDialer) {
             val code = intent.getStringExtra(SecretCodeReceiver.EXTRA_SECRET_CODE_USED) ?: "82858"
             recoveryNotice.value = "VaultSync launched via dialer secret code (*#*#$code#*#*)"
-        } else if (uri != null && uri.scheme == "vaultsync") {
-            val host = uri.host ?: "open"
-            recoveryNotice.value = "VaultSync launched via recovery link (vaultsync://$host)"
+            if (prefs.iconMode == IconMode.HIDDEN) {
+                com.vaultsync.core.stealth.AppIconManager.applyIconMode(this, IconMode.NORMAL)
+                com.vaultsync.core.stealth.AppIconManager.syncAliases(this)
+            }
+        } else if (uri != null) {
+            val isCustomScheme = uri.scheme == "vaultsync"
+            val isWebRecovery = uri.scheme in listOf("http", "https") &&
+                (uri.host == "vaultsync.app" || uri.host == "shintopc.github.io")
+
+            if (isCustomScheme || isWebRecovery) {
+                recoveryNotice.value = "VaultSync launched via recovery link (${uri})"
+                if (prefs.iconMode == IconMode.HIDDEN) {
+                    com.vaultsync.core.stealth.AppIconManager.applyIconMode(this, IconMode.NORMAL)
+                    com.vaultsync.core.stealth.AppIconManager.syncAliases(this)
+                }
+            }
         }
     }
 

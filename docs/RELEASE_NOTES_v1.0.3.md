@@ -53,6 +53,9 @@ We are proud to announce **VaultSync v1.0.3**, a major security, resiliency, and
 - **Emergency Raw Blob Salvage**: Deep-scans storage directories for unindexed `.vsf` blobs even when the vault manifest is missing or damaged, extracting original filenames and headers.
 - **SAF Custom Directory Picker**: Select any folder across internal storage, external SD cards, or OTG drives using Android's system document picker.
 - **Crash-Resilient Manifest Synchronization**: Background manifest writes feature atomic flush buffers, write-lock isolation, and automatic fallback to `manifest.vsm.bak`.
+- **Lockout Recovery Fixes (Routes 1 & 2)**:
+  - **Route 1 (Universal Web Gateway)**: Created `open.html` and `index.html` for instant one-tap browser launching, bypassing mobile browser address bar search overrides, and added web intent filters for `shintopc.github.io` and `vaultsync.app`. Added a direct **Test Launch** button in the dialog.
+  - **Route 2 (Modern Android Telephony Secret Code)**: Added `android.telephony.action.SECRET_CODE` intent filters alongside legacy actions, implemented high-priority heads-up recovery notifications (`vaultsync_recovery`) to overcome Android 10+ background activity start restrictions, and added automatic icon un-hiding upon valid recovery trigger. Added a direct **Test Code** button in the dialog.
 
 ---
 
@@ -64,6 +67,6 @@ We are proud to announce **VaultSync v1.0.3**, a major security, resiliency, and
 - **Version Name**: `1.0.3`
 - **Target SDK**: Android 16 (API 37) / Min SDK: Android 8.0 (API 26)
 - **Signer**: `CN=VaultSync, OU=Production, O=VaultSync, C=US` (4096-bit RSA)
-- **APK SHA-256**: `5DDE6A141CC83E89C94663FB958EC3B7BC378444314BFF49C6C29CF9AC32BF6C`
+- **APK SHA-256**: `F89024FA8173C11625C7AB30299BE6AD9894A7FADC3FE557650FE06CC9D526D7`
 - **Test Suite**: 134 automated unit tests passing (100% pass rate)
 

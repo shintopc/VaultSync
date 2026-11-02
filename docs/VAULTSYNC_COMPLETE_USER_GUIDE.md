@@ -676,19 +676,29 @@ graph TD
     D -->|Settings > Apps > VaultSync > Open| E
 ```
 
-### 7.1 Route 1: Web Browser Deep Link
-Open Chrome, Samsung Internet, or any web browser and enter:
-```
-vaultsync://open
-```
-or
-```
-vaultsync://recover
-```
-Android will identify VaultSync's registered intent filter and immediately launch the app.
+### 7.1 Route 1: Web Browser & Universal Deep Link Gateway
+You can launch VaultSync from any browser, chat, or note application:
+
+1. **Web Recovery Gateway (Recommended for Browsers)**:
+   - Navigate to:
+     ```
+     https://shintopc.github.io/VaultSync/open.html
+     ```
+   - This web gateway is hosted on GitHub Pages and automatically triggers Chrome's `intent://` launcher as well as `vaultsync://open`. It works seamlessly across Google Chrome, Samsung Internet, Edge, Firefox, and Brave.
+2. **Direct Custom Scheme**:
+   - Send or tap:
+     ```
+     vaultsync://open
+     ```
+     or
+     ```
+     vaultsync://recover
+     ```
+   > [!IMPORTANT]
+   > **Browser URL Bar Caveat**: Mobile web browsers (especially Google Chrome) treat text without a web domain as a Google Search query when typed directly into the URL address bar. To launch via custom scheme, tap the link from a note (Google Keep, Samsung Notes), send it in a chat (WhatsApp, Telegram), or use the web gateway `https://shintopc.github.io/VaultSync/open.html`.
 
 ### 7.2 Route 2: Telephony Secret Dialer Code
-Open your phone's dialer / phone keypad and enter:
+Open your phone's dialer / keypad app and enter:
 ```
 *#*#82858#*#*
 ```
@@ -697,7 +707,13 @@ A backup dialer code is also supported:
 ```
 *#*#1234#*#*
 ```
-The telephony `SECRET_CODE` broadcast receiver will immediately wake and open the app.
+
+> [!IMPORTANT]
+> **Dialing Instructions & Modern Android Compatibility**:
+> 1. **Do NOT press the green Call button!** Secret codes are meant to trigger locally inside the dialer. Pressing Call attempts a carrier GSM/USSD call and results in "Invalid MMI code" or "Connection problem".
+> 2. **Auto-Trigger**: The code triggers automatically upon typing the final `*`. If you copied the code or used "Open Dialer", tap into the dialpad, delete the final `*`, and re-type `*` to fire the trigger.
+> 3. **Android 10+ Heads-Up Notification**: Due to Android OS background activity launch restrictions on modern devices (Android 10–16), dialing the code broadcasts both modern `android.telephony.action.SECRET_CODE` and legacy `android.provider.Telephony.SECRET_CODE` and immediately displays a high-priority heads-up banner: **"🔓 VaultSync Recovery Mode — Tap to open"**. Tapping this banner launches VaultSync instantly.
+> 4. **Carrier / OEM Restrictions**: Certain phone carriers (e.g. US carriers on Samsung One UI) disable third-party secret code broadcasts at the firmware level. If your phone's dialer swallows secret codes, use **Route 1** (Web Gateway) or **Route 3** (Android App Settings).
 
 ### 7.3 Route 3: Android System Settings
 1. Open your phone's **Settings**.
