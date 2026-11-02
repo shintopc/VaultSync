@@ -429,6 +429,52 @@ class AndroidVaultRepository(
         entryDao.deleteById(entryId)
     }
 
+    override fun getTrashEntries(): Flow<List<VaultEntry>> {
+        return entryDao.getTrashEntries().map { list ->
+            list.map { it.toVaultEntry() }
+        }.distinctUntilChanged()
+    }
+
+    override fun getTrashCount(): Flow<Int> {
+        return entryDao.getTrashCount().distinctUntilChanged()
+    }
+
+    override suspend fun moveToTrash(entryId: String): Unit = withContext(Dispatchers.IO) {
+        val entry = entryDao.getById(entryId)
+            ?: throw IllegalArgumentException("Entry $entryId not found")
+        if (entry.isInUse) {
+            throw IllegalStateException("Cannot move file to trash: it is currently in use.")
+        }
+        entryDao.moveToTrash(entryId, System.currentTimeMillis())
+    }
+
+    override suspend fun restoreFromTrash(entryId: String): Unit = withContext(Dispatchers.IO) {
+        val entry = entryDao.getById(entryId)
+            ?: throw IllegalArgumentException("Entry $entryId not found")
+        entryDao.restoreFromTrash(entryId)
+    }
+
+    override suspend fun emptyTrash(): Unit = withContext(Dispatchers.IO) {
+        val registeredIds = entryDao.getAllEntryIds()
+        for (id in registeredIds) {
+            val entry = entryDao.getById(id)
+            if (entry != null && entry.isTrash) {
+                storageManager.deleteBlob(entry.id)
+                entryDao.deleteById(entry.id)
+            }
+        }
+    }
+
+    override suspend fun purgeExpiredTrash(retentionDays: Int): Int = withContext(Dispatchers.IO) {
+        val cutoff = System.currentTimeMillis() - (retentionDays.toLong() * 24L * 60L * 60L * 1000L)
+        val expired = entryDao.getExpiredTrash(cutoff)
+        for (entry in expired) {
+            storageManager.deleteBlob(entry.id)
+            entryDao.deleteById(entry.id)
+        }
+        return@withContext expired.size
+    }
+
     override suspend fun moveEntry(entryId: String, targetFolderId: String?): Unit = withContext(Dispatchers.IO) {
         if (targetFolderId != null) {
             val target = folderDao.getById(targetFolderId)
@@ -503,5 +549,8 @@ class AndroidVaultRepository(
             createdAtMillis = createdAtMillis,
             dateModifiedMillis = dateModifiedMillis,
             isInUse = isInUse,
+            isTrash = isTrash,
+            deletedAtMillis = deletedAtMillis,
+            contentHash = contentHash,
         )
 }

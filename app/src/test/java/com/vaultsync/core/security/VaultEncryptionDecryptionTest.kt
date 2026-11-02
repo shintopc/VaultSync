@@ -300,4 +300,26 @@ class VaultEncryptionDecryptionTest {
             )
         }
     }
+
+    @Test
+    fun readSamplePlaintextReturnsExpectedPrefixBytes() {
+        val payload = "Top secret data payload designed for sample hash detection.".toByteArray(Charsets.UTF_8)
+        val inputFile = tempFolder.newFile("sample_test.txt")
+        inputFile.writeBytes(payload)
+
+        val encryptedFile = File(tempFolder.root, "sample_test.vsf")
+        val vmk = VaultKeyManager.generateVaultMasterKey()
+
+        VaultFileEncryptor.encryptFile(inputFile, encryptedFile, vmk)
+
+        // Read 10 bytes sample
+        val sample10 = VaultFileDecryptor.readSamplePlaintext(encryptedFile, vmk, maxBytes = 10)
+        assertEquals(10, sample10.size)
+        assertArrayEquals(payload.copyOfRange(0, 10), sample10)
+
+        // Read entire sample
+        val sampleAll = VaultFileDecryptor.readSamplePlaintext(encryptedFile, vmk, maxBytes = 1024)
+        assertEquals(payload.size, sampleAll.size)
+        assertArrayEquals(payload, sampleAll)
+    }
 }

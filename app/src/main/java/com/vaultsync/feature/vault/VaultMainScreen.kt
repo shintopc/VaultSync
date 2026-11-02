@@ -35,7 +35,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -98,6 +100,24 @@ fun VaultMainScreen(
     val vaultAlbums by viewModel.vaultAlbums.collectAsState()
     val photoEntries by viewModel.photoEntries.collectAsState()
     val audioEntries by viewModel.audioEntries.collectAsState()
+    val trashEntries by viewModel.trashEntries.collectAsState()
+    val trashCount by viewModel.trashCount.collectAsState()
+
+    val createBackupLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/zip"),
+    ) { uri ->
+        if (uri != null) {
+            viewModel.exportPortableBackup(uri)
+        }
+    }
+
+    val restoreBackupLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) {
+            viewModel.importPortableBackup(uri)
+        }
+    }
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -255,9 +275,9 @@ fun VaultMainScreen(
 
                         Spacer(modifier = Modifier.width(8.dp))
 
-                        // Top Tabs: Albums | Audio
+                        // Top Tabs: Albums | Audio | Trash
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(18.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             // Albums Tab
@@ -272,6 +292,13 @@ fun VaultMainScreen(
                                 title = "Audio",
                                 isSelected = uiState.viewTab == VaultViewTab.AUDIO,
                                 onClick = { viewModel.setViewTab(VaultViewTab.AUDIO) },
+                            )
+
+                            // Trash Tab
+                            TopNavTab(
+                                title = if (trashCount > 0) "Trash ($trashCount)" else "Trash",
+                                isSelected = uiState.viewTab == VaultViewTab.TRASH,
+                                onClick = { viewModel.setViewTab(VaultViewTab.TRASH) },
                             )
                         }
 
@@ -326,6 +353,60 @@ fun VaultMainScreen(
                                     onClick = {
                                         isMoreMenuOpen = false
                                         viewModel.openStorageDialog()
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Rounded.CleaningServices,
+                                            contentDescription = null,
+                                            tint = Color(0xFF38BDF8),
+                                            modifier = Modifier.size(20.dp),
+                                        )
+                                    },
+                                    text = { Text("Storage Optimizer", color = Color.White) },
+                                    onClick = {
+                                        isMoreMenuOpen = false
+                                        viewModel.runStorageOptimizationAnalysis()
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Rounded.PhotoCamera,
+                                            contentDescription = null,
+                                            tint = Color(0xFFFF453A),
+                                            modifier = Modifier.size(20.dp),
+                                        )
+                                    },
+                                    text = { Text("Break-In Intruder Logs", color = Color.White) },
+                                    onClick = {
+                                        isMoreMenuOpen = false
+                                        viewModel.openIntruderLogsDialog()
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Security,
+                                            contentDescription = null,
+                                            tint = Color(0xFFFF9F0A),
+                                            modifier = Modifier.size(20.dp),
+                                        )
+                                    },
+                                    text = {
+                                        Column {
+                                            Text("Decoy PIN (Duress Mode)", color = Color.White)
+                                            Text(
+                                                if (uiState.isDecoyPinSet) "Active (Opens dummy vault)" else "Disabled",
+                                                fontSize = 11.sp,
+                                                color = if (uiState.isDecoyPinSet) Color(0xFF38BDF8) else Color(0xFF8E8E93),
+                                            )
+                                        }
+                                    },
+                                    onClick = {
+                                        isMoreMenuOpen = false
+                                        viewModel.openDecoyPinDialog()
                                     },
                                 )
                                 DropdownMenuItem(
@@ -731,6 +812,16 @@ fun VaultMainScreen(
                     }
                 }
 
+                // TRASH Tab -> Dedicated In-Vault Recycle Bin Section
+                uiState.viewTab == VaultViewTab.TRASH -> {
+                    VaultTrashSection(
+                        trashEntries = trashEntries,
+                        onRestore = { viewModel.restoreEntryFromTrash(it.id) },
+                        onEmptyTrash = { viewModel.emptyVaultTrash() },
+                        onPermanentlyDelete = { viewModel.deleteEntry(it.id) },
+                    )
+                }
+
                 // ALBUMS Tab -> 1Gallery 3-Thumbnail Preview Layout (Default)
                 else -> {
                     if (vaultAlbums.isEmpty()) {
@@ -889,11 +980,11 @@ fun VaultMainScreen(
     }
 
     uiState.entryToDelete?.let { entry ->
-        DeleteConfirmationDialog(
-            title = "Delete File",
-            message = "Permanently delete '${entry.originalFileName}' from the vault? This cannot be undone.",
+        DeleteOrTrashEntryDialog(
+            fileName = entry.originalFileName,
             onDismiss = { viewModel.closeDeleteEntryDialog() },
-            onConfirm = { viewModel.deleteEntry(entry.id) },
+            onMoveToTrash = { viewModel.moveEntryToTrash(entry.id) },
+            onPermanentDelete = { viewModel.deleteEntry(entry.id) },
         )
     }
 
@@ -916,7 +1007,46 @@ fun VaultMainScreen(
             totalVaultSizeBytes = uiState.totalVaultSizeBytes,
             availableStorageBytes = uiState.availableStorageBytes,
             onDismiss = { viewModel.closeStorageDialog() },
+            onOptimizeStorage = { viewModel.runStorageOptimizationAnalysis() },
+            onExportBackup = { createBackupLauncher.launch("VaultSync_Backup_${System.currentTimeMillis()}.vsbackup") },
+            onRestoreBackup = { restoreBackupLauncher.launch(arrayOf("*/*")) },
         )
+    }
+
+    // Storage Optimizer Dialog
+    if (uiState.showStorageOptimizerDialog) {
+        StorageOptimizerDialog(
+            report = uiState.storageOptimizationReport,
+            isScanning = uiState.isOptimizingStorage,
+            onDismiss = { viewModel.closeStorageOptimizerDialog() },
+            onCleanDuplicates = { moveToTrash -> viewModel.cleanDuplicateFiles(moveToTrash) },
+        )
+    }
+
+    // Decoy PIN Dialog
+    if (uiState.showDecoyPinDialog) {
+        DecoyPinDialog(
+            isDecoyPinSet = uiState.isDecoyPinSet,
+            onDismiss = { viewModel.closeDecoyPinDialog() },
+            onSetDecoyPin = { pin -> viewModel.setDecoyPin(pin) },
+            onClearDecoyPin = { viewModel.clearDecoyPin() },
+        )
+    }
+
+    // Break-In Intruder Logs Dialog
+    if (uiState.showIntruderLogsDialog) {
+        IntruderLogsDialog(
+            logs = uiState.intruderLogs,
+            isIntruderCaptureEnabled = uiState.isIntruderCaptureEnabled,
+            onToggleCapture = { viewModel.toggleIntruderCapture(it) },
+            onDismiss = { viewModel.closeIntruderLogsDialog() },
+            onClearLogs = { viewModel.clearIntruderLogs() },
+        )
+    }
+
+    // Backup in Progress Overlay
+    if (uiState.isBackupInProgress) {
+        ImportProgressOverlay(progressText = uiState.backupProgressText ?: "Processing encrypted backup...")
     }
 
     // In-App Media Picker
@@ -979,13 +1109,38 @@ fun VaultMainScreen(
     }
 
     if (showBatchDeleteDialog) {
-        DeleteConfirmationDialog(
-            title = "Delete ${uiState.selectedEntryIds.size} Items",
-            message = "Permanently delete ${uiState.selectedEntryIds.size} selected items from the vault? This cannot be undone.",
-            onDismiss = { showBatchDeleteDialog = false },
-            onConfirm = {
-                showBatchDeleteDialog = false
-                viewModel.deleteSelectedEntries()
+        AlertDialog(
+            onDismissRequest = { showBatchDeleteDialog = false },
+            title = { Text("Delete ${uiState.selectedEntryIds.size} Items") },
+            text = {
+                Text("Move ${uiState.selectedEntryIds.size} selected items to Vault Recycle Bin (kept 30 days) or shred them immediately?")
+            },
+            confirmButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = {
+                            showBatchDeleteDialog = false
+                            viewModel.moveSelectedEntriesToTrash()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    ) {
+                        Text("Move to Trash")
+                    }
+                    Button(
+                        onClick = {
+                            showBatchDeleteDialog = false
+                            viewModel.deleteSelectedEntries()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    ) {
+                        Text("Shred")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBatchDeleteDialog = false }) {
+                    Text("Cancel")
+                }
             },
         )
     }
@@ -1827,8 +1982,8 @@ private fun EmptyVaultSection(
     icon: ImageVector,
     title: String,
     description: String,
-    actionLabel: String,
-    onAction: () -> Unit,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
 ) {
     Column(
         modifier = Modifier
@@ -1866,16 +2021,18 @@ private fun EmptyVaultSection(
             color = Color(0xFF8E8E93),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
-        Spacer(modifier = Modifier.height(24.dp))
-        Button(
-            onClick = onAction,
-            shape = RoundedCornerShape(24.dp),
-            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                containerColor = Color.White,
-                contentColor = Color.Black,
-            ),
-        ) {
-            Text(actionLabel, fontWeight = FontWeight.SemiBold)
+        if (actionLabel != null && onAction != null) {
+            Spacer(modifier = Modifier.height(24.dp))
+            Button(
+                onClick = onAction,
+                shape = RoundedCornerShape(24.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.White,
+                    contentColor = Color.Black,
+                ),
+            ) {
+                Text(actionLabel, fontWeight = FontWeight.SemiBold)
+            }
         }
     }
 }
@@ -1899,5 +2056,150 @@ fun getCategoryIcon(category: VaultCategory): String {
         VaultCategory.Documents -> "📄"
         VaultCategory.Other -> "📦"
         VaultCategory.All -> "📁"
+    }
+}
+
+@Composable
+fun VaultTrashSection(
+    trashEntries: List<VaultEntry>,
+    onRestore: (VaultEntry) -> Unit,
+    onEmptyTrash: () -> Unit,
+    onPermanentlyDelete: (VaultEntry) -> Unit,
+) {
+    var showEmptyConfirmDialog by remember { mutableStateOf(false) }
+
+    if (showEmptyConfirmDialog) {
+        DeleteConfirmationDialog(
+            title = "Empty Vault Recycle Bin",
+            message = "Permanently shred all ${trashEntries.size} trashed files? This cannot be undone.",
+            confirmButtonText = "Empty Trash",
+            isDestructive = true,
+            onDismiss = { showEmptyConfirmDialog = false },
+            onConfirm = {
+                showEmptyConfirmDialog = false
+                onEmptyTrash()
+            },
+        )
+    }
+
+    if (trashEntries.isEmpty()) {
+        EmptyVaultSection(
+            icon = Icons.Rounded.DeleteOutline,
+            title = "Vault Recycle Bin is Empty",
+            description = "Items moved to trash stay here for 30 days before being automatically shredded.",
+        )
+    } else {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Column {
+                        Text(
+                            text = "Recycle Bin (${trashEntries.size})",
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            text = "Auto-shredded after 30 days",
+                            color = Color(0xFF8E8E93),
+                            fontSize = 11.sp,
+                        )
+                    }
+
+                    Button(
+                        onClick = { showEmptyConfirmDialog = true },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    ) {
+                        Icon(Icons.Rounded.DeleteSweep, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Empty Trash", fontSize = 12.sp)
+                    }
+                }
+            }
+
+            items(trashEntries, key = { it.id }) { entry ->
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFF1C1C1E),
+                    border = androidx.compose.foundation.BorderStroke(0.5.dp, Color.White.copy(alpha = 0.12f)),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFF2C2C2E),
+                            modifier = Modifier.size(46.dp),
+                        ) {
+                            Icon(
+                                imageVector = when (entry.category) {
+                                    VaultCategory.Images -> Icons.Rounded.Image
+                                    VaultCategory.Videos -> Icons.Rounded.Movie
+                                    VaultCategory.Audio -> Icons.Rounded.Audiotrack
+                                    else -> Icons.Rounded.Description
+                                },
+                                contentDescription = null,
+                                tint = Color(0xFF38BDF8),
+                                modifier = Modifier.padding(10.dp),
+                            )
+                        }
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = entry.originalFileName,
+                                color = Color.White,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 14.sp,
+                                maxLines = 1,
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(
+                                    text = formatFileSize(entry.originalSizeBytes),
+                                    color = Color(0xFF8E8E93),
+                                    fontSize = 11.sp,
+                                )
+                                Text("•", color = Color(0xFF8E8E93), fontSize = 11.sp)
+                                Text(
+                                    text = "${entry.daysRemainingInTrash} days left",
+                                    color = Color(0xFFFF9F0A),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium,
+                                )
+                            }
+                        }
+
+                        IconButton(onClick = { onRestore(entry) }) {
+                            Icon(
+                                imageVector = Icons.Rounded.Restore,
+                                contentDescription = "Restore",
+                                tint = Color(0xFF34C759),
+                            )
+                        }
+
+                        IconButton(onClick = { onPermanentlyDelete(entry) }) {
+                            Icon(
+                                imageVector = Icons.Rounded.DeleteForever,
+                                contentDescription = "Shred Permanently",
+                                tint = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }

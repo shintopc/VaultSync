@@ -89,10 +89,11 @@ class VaultThumbnailManagerTest {
 
     @Test
     fun vaultViewTab_andAlbumDisplay_behaveCorrectly() {
-        assertEquals(3, VaultViewTab.entries.size)
+        assertEquals(4, VaultViewTab.entries.size)
         assertTrue(VaultViewTab.entries.contains(VaultViewTab.PHOTOS))
         assertTrue(VaultViewTab.entries.contains(VaultViewTab.ALBUMS))
         assertTrue(VaultViewTab.entries.contains(VaultViewTab.AUDIO))
+        assertTrue(VaultViewTab.entries.contains(VaultViewTab.TRASH))
 
         val folder = VaultFolder(
             id = "folder_1",

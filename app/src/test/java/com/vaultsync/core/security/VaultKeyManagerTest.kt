@@ -86,4 +86,18 @@ class VaultKeyManagerTest {
             session.getVmkCopy()
         }
     }
+
+    @Test
+    fun decoyPinDerivationAndVerificationLogic() {
+        val decoyPin = "9876"
+        val wrongPin = "1234"
+        val salt = KeyDerivation.generateRandomBytes(16)
+
+        val verifier = KeyDerivation.deriveCredentialVerifier(decoyPin.toCharArray(), salt)
+        val computedMatching = KeyDerivation.deriveCredentialVerifier(decoyPin.toCharArray(), salt)
+        val computedMismatch = KeyDerivation.deriveCredentialVerifier(wrongPin.toCharArray(), salt)
+
+        assertTrue(computedMatching.contentEquals(verifier))
+        assertFalse(computedMismatch.contentEquals(verifier))
+    }
 }

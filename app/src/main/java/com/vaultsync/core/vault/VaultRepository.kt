@@ -19,7 +19,13 @@ interface VaultRepository {
     fun getEntries(folderId: String?): Flow<List<VaultEntry>>
     fun getEntriesByCategory(category: VaultCategory): Flow<List<VaultEntry>>
     fun getAllEntries(): Flow<List<VaultEntry>>
+    fun getTrashEntries(): Flow<List<VaultEntry>>
+    fun getTrashCount(): Flow<Int>
     suspend fun getEntry(id: String): VaultEntry?
+    suspend fun moveToTrash(entryId: String)
+    suspend fun restoreFromTrash(entryId: String)
+    suspend fun emptyTrash()
+    suspend fun purgeExpiredTrash(retentionDays: Int = 30): Int
 
     suspend fun importFile(
         sourceFile: File,

@@ -98,7 +98,9 @@ import androidx.compose.ui.window.Dialog
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.vaultsync.R
@@ -137,6 +139,7 @@ private fun Context.findActivity(): Activity? {
 fun EnhancedVideoPlayer(
     mediaUri: Uri,
     modifier: Modifier = Modifier,
+    dataSourceFactory: DataSource.Factory? = null,
     isPlayingActive: Boolean = true,
     showControls: Boolean = true,
     bottomPadding: Dp = 16.dp,
@@ -234,8 +237,14 @@ fun EnhancedVideoPlayer(
     var lastTapTime by remember { mutableLongStateOf(0L) }
     var lastTapPosition by remember { mutableStateOf(Offset.Zero) }
 
-    val exoPlayer = remember(mediaUri) {
-        ExoPlayer.Builder(context).build().apply {
+    val exoPlayer = remember(mediaUri, dataSourceFactory) {
+        val builder = ExoPlayer.Builder(context)
+        if (dataSourceFactory != null) {
+            val mediaSourceFactory = DefaultMediaSourceFactory(context)
+                .setDataSourceFactory(dataSourceFactory)
+            builder.setMediaSourceFactory(mediaSourceFactory)
+        }
+        builder.build().apply {
             setMediaItem(MediaItem.fromUri(mediaUri))
             prepare()
             playWhenReady = isPlayingActive

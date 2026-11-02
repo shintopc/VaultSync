@@ -14,15 +14,31 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CleaningServices
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.DeleteForever
+import androidx.compose.material.icons.rounded.FileDownload
+import androidx.compose.material.icons.rounded.FileUpload
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.PhotoCamera
+import androidx.compose.material.icons.rounded.Restore
+import androidx.compose.material.icons.rounded.Security
+import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -32,10 +48,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import coil3.compose.AsyncImage
 import com.vaultsync.core.model.VaultEntry
 import com.vaultsync.core.model.VaultFolder
 import java.text.SimpleDateFormat
@@ -456,6 +477,9 @@ fun StorageInfoDialog(
     totalVaultSizeBytes: Long,
     availableStorageBytes: Long,
     onDismiss: () -> Unit,
+    onOptimizeStorage: () -> Unit = {},
+    onExportBackup: () -> Unit = {},
+    onRestoreBackup: () -> Unit = {},
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -466,16 +490,450 @@ fun StorageInfoDialog(
                 DetailRow(label = "Total Vault Encrypted Size", value = formatFileSize(totalVaultSizeBytes))
                 DetailRow(label = "Available Device Space", value = formatFileSize(availableStorageBytes))
                 Spacer(modifier = Modifier.height(4.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(2.dp))
+
                 Text(
-                    text = "All files are stored with AES-256-GCM encryption in private storage. Decrypted files are held temporarily in secure memory/cache during previews and cleaned up upon lock.",
+                    text = "Storage & Backup Tools",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                )
+
+                OutlinedButton(
+                    onClick = {
+                        onDismiss()
+                        onOptimizeStorage()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(Icons.Rounded.CleaningServices, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Clean Duplicates & Optimize")
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            onDismiss()
+                            onExportBackup()
+                        },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(Icons.Rounded.FileUpload, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Export .vsbackup", fontSize = 12.sp)
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            onDismiss()
+                            onRestoreBackup()
+                        },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(Icons.Rounded.FileDownload, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Restore Backup", fontSize = 12.sp)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss) {
+                Text("Done")
+            }
+        },
+    )
+}
+
+@Composable
+fun DeleteOrTrashEntryDialog(
+    fileName: String,
+    onDismiss: () -> Unit,
+    onMoveToTrash: () -> Unit,
+    onPermanentDelete: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Delete File") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "What would you like to do with '$fileName'?",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Text(
+                    text = "• Move to Trash: Kept in Vault Recycle Bin for 30 days before shredding.\n• Shred Permanently: Immediately destroyed from encrypted storage.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         },
         confirmButton = {
-            Button(onClick = onDismiss) {
-                Text("Done")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = onMoveToTrash,
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                ) {
+                    Text("Move to Trash")
+                }
+                Button(
+                    onClick = onPermanentDelete,
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                ) {
+                    Text("Shred")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
+}
+
+@Composable
+fun StorageOptimizerDialog(
+    report: com.vaultsync.core.storage.StorageOptimizationReport?,
+    isScanning: Boolean,
+    onDismiss: () -> Unit,
+    onCleanDuplicates: (moveToTrash: Boolean) -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Rounded.CleaningServices, contentDescription = null, tint = Color(0xFF38BDF8))
+                Text("Storage Optimizer")
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                if (isScanning) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Analyzing file hashes and duplicate chunks...", style = MaterialTheme.typography.bodyMedium)
+                    }
+                } else if (report == null || report.totalDuplicateCount == 0) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Icon(Icons.Rounded.Security, contentDescription = null, tint = Color(0xFF34C759), modifier = Modifier.size(48.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "Zero Duplicates Found!",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "All files in your vault are unique and space is 100% optimized.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        )
+                    }
+                } else {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = "Found ${report.totalDuplicateCount} duplicate file(s)",
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                            Text(
+                                text = "${formatFileSize(report.totalWastedBytes)} wasted storage can be reclaimed",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+
+                    Text("Duplicate Sets:", style = MaterialTheme.typography.labelMedium)
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 200.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        items(report.duplicateGroups) { group ->
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                tonalElevation = 2.dp,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Column(modifier = Modifier.padding(8.dp)) {
+                                    Text(
+                                        text = group.entries.first().originalFileName,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                    )
+                                    Text(
+                                        text = "${group.entries.size} copies • ${formatFileSize(group.fileSize)} each (${formatFileSize(group.wastedBytes)} extra)",
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            if (report != null && report.totalDuplicateCount > 0 && !isScanning) {
+                Button(
+                    onClick = { onCleanDuplicates(true) },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                ) {
+                    Text("Clean Duplicates")
+                }
+            } else {
+                Button(onClick = onDismiss) {
+                    Text("Close")
+                }
+            }
+        },
+        dismissButton = {
+            if (report != null && report.totalDuplicateCount > 0 && !isScanning) {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel")
+                }
+            }
+        },
+    )
+}
+
+@Composable
+fun DecoyPinDialog(
+    isDecoyPinSet: Boolean,
+    onDismiss: () -> Unit,
+    onSetDecoyPin: (String) -> Unit,
+    onClearDecoyPin: () -> Unit,
+) {
+    var enteredPin by remember { mutableStateOf("") }
+    var confirmPin by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Rounded.Lock, contentDescription = null, tint = Color(0xFFFF9F0A))
+                Text("Duress / Decoy PIN")
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = "A Decoy PIN protects you under coercion or peer pressure. Entering this PIN on the lock screen opens an innocent dummy vault with zero secret files.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+
+                if (isDecoyPinSet) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Column {
+                                Text("Decoy PIN is Active", fontWeight = FontWeight.Bold, color = Color(0xFF38BDF8), fontSize = 13.sp)
+                                Text("Safe dummy vault will unlock with decoy PIN", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                            }
+                            Button(
+                                onClick = onClearDecoyPin,
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                            ) {
+                                Text("Disable", fontSize = 12.sp)
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("Change Decoy PIN:", style = MaterialTheme.typography.labelSmall)
+                }
+
+                OutlinedTextField(
+                    value = enteredPin,
+                    onValueChange = { enteredPin = it; errorMessage = null },
+                    label = { Text("New Decoy PIN / Password") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                OutlinedTextField(
+                    value = confirmPin,
+                    onValueChange = { confirmPin = it; errorMessage = null },
+                    label = { Text("Confirm Decoy PIN") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                if (errorMessage != null) {
+                    Text(text = errorMessage!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (enteredPin.length < 4) {
+                        errorMessage = "PIN must be at least 4 digits"
+                    } else if (enteredPin != confirmPin) {
+                        errorMessage = "PINs do not match"
+                    } else {
+                        onSetDecoyPin(enteredPin)
+                    }
+                },
+            ) {
+                Text(if (isDecoyPinSet) "Update Decoy PIN" else "Set Decoy PIN")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
+}
+
+@Composable
+fun IntruderLogsDialog(
+    logs: List<com.vaultsync.core.security.IntruderLogEntry>,
+    isIntruderCaptureEnabled: Boolean,
+    onToggleCapture: (Boolean) -> Unit,
+    onDismiss: () -> Unit,
+    onClearLogs: () -> Unit,
+) {
+    val dateFormatter = remember { SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault()) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Rounded.PhotoCamera, contentDescription = null, tint = Color(0xFFFF453A))
+                Text("Break-In Logs")
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Capture photo on 3 failed attempts", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                        Text("Silently snaps front camera photo", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(
+                        checked = isIntruderCaptureEnabled,
+                        onCheckedChange = onToggleCapture,
+                    )
+                }
+
+                HorizontalDivider()
+
+                if (logs.isEmpty()) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Icon(Icons.Rounded.Security, contentDescription = null, tint = Color(0xFF34C759), modifier = Modifier.size(40.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("No break-in attempts recorded", style = MaterialTheme.typography.bodyMedium)
+                    }
+                } else {
+                    Text("Recorded Intruder Events (${logs.size}):", style = MaterialTheme.typography.labelSmall)
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 240.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        items(logs) { log ->
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                tonalElevation = 3.dp,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                ) {
+                                    if (log.photoFile != null) {
+                                        AsyncImage(
+                                            model = log.photoFile,
+                                            contentDescription = "Intruder photo",
+                                            modifier = Modifier.size(52.dp),
+                                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                        )
+                                    } else {
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = MaterialTheme.colorScheme.errorContainer,
+                                            modifier = Modifier.size(52.dp),
+                                        ) {
+                                            Icon(Icons.Rounded.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.padding(12.dp))
+                                        }
+                                    }
+
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(dateFormatter.format(Date(log.timestampMillis)), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                        Text("${log.failureCount} consecutive failed attempts", fontSize = 11.sp, color = MaterialTheme.colorScheme.error)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            if (logs.isNotEmpty()) {
+                Button(
+                    onClick = onClearLogs,
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                ) {
+                    Text("Clear Logs")
+                }
+            } else {
+                Button(onClick = onDismiss) {
+                    Text("Close")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(if (logs.isNotEmpty()) "Cancel" else "Done")
             }
         },
     )

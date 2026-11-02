@@ -447,11 +447,31 @@ fun ProtectedVideoPlayer(
     previewFile: File,
     isPlayingActive: Boolean = true,
     showControls: Boolean = true,
+    encryptedBlobFile: File? = null,
+    vmk: ByteArray? = null,
     onToggleControls: () -> Unit = {},
     onZoomChanged: (Boolean) -> Unit = {},
 ) {
+    val dataSourceFactory = remember(encryptedBlobFile, vmk) {
+        if (encryptedBlobFile != null && encryptedBlobFile.exists() && vmk != null) {
+            com.vaultsync.core.media.VaultMediaDataSourceFactory(
+                resolveBlobFile = { encryptedBlobFile },
+                vmkProvider = { vmk },
+            )
+        } else null
+    }
+
+    val uri = remember(previewFile, encryptedBlobFile, dataSourceFactory) {
+        if (dataSourceFactory != null && encryptedBlobFile != null) {
+            Uri.parse("vault://${encryptedBlobFile.name}")
+        } else {
+            Uri.fromFile(previewFile)
+        }
+    }
+
     EnhancedVideoPlayer(
-        mediaUri = Uri.fromFile(previewFile),
+        mediaUri = uri,
+        dataSourceFactory = dataSourceFactory,
         isPlayingActive = isPlayingActive,
         showControls = showControls,
         bottomPadding = 20.dp,

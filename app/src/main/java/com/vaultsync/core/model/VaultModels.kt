@@ -21,4 +21,16 @@ data class VaultEntry(
     val createdAtMillis: Long,
     val dateModifiedMillis: Long,
     val isInUse: Boolean = false,
-)
+    val isTrash: Boolean = false,
+    val deletedAtMillis: Long? = null,
+    val contentHash: String? = null,
+) {
+    val daysRemainingInTrash: Int
+        get() {
+            if (!isTrash || deletedAtMillis == null) return 30
+            val elapsed = System.currentTimeMillis() - deletedAtMillis
+            val thirtyDaysMs = 30L * 24L * 60L * 60L * 1000L
+            val remainingMs = (thirtyDaysMs - elapsed).coerceAtLeast(0L)
+            return (remainingMs / (24L * 60L * 60L * 1000L)).toInt()
+        }
+}

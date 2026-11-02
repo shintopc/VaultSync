@@ -19,6 +19,7 @@ import androidx.room.PrimaryKey
     indices = [
         Index("folder_id"),
         Index("category"),
+        Index("is_trash"),
     ],
 )
 data class VaultEntryEntity(
@@ -42,4 +43,10 @@ data class VaultEntryEntity(
     val dateModifiedMillis: Long,
     @ColumnInfo(name = "is_in_use")
     val isInUse: Boolean = false,
+    @ColumnInfo(name = "is_trash", defaultValue = "0")
+    val isTrash: Boolean = false,
+    @ColumnInfo(name = "deleted_at")
+    val deletedAtMillis: Long? = null,
+    @ColumnInfo(name = "content_hash")
+    val contentHash: String? = null,
 )

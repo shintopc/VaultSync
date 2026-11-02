@@ -185,6 +185,38 @@ class VaultCredentialStore(context: Context) {
         return result
     }
 
+    val isDecoyPinSet: Boolean
+        get() = prefs.contains(KEY_DECOY_VERIFIER)
+
+    fun setDecoyPin(pin: String) {
+        val salt = KeyDerivation.generateRandomBytes(16)
+        val verifier = KeyDerivation.deriveCredentialVerifier(pin.toCharArray(), salt)
+        prefs.edit()
+            .putString(KEY_DECOY_SALT, toHex(salt))
+            .putString(KEY_DECOY_VERIFIER, toHex(verifier))
+            .apply()
+    }
+
+    fun clearDecoyPin() {
+        prefs.edit()
+            .remove(KEY_DECOY_SALT)
+            .remove(KEY_DECOY_VERIFIER)
+            .apply()
+    }
+
+    fun verifyDecoyPin(pin: String): Boolean {
+        val saltHex = prefs.getString(KEY_DECOY_SALT, null) ?: return false
+        val verifierHex = prefs.getString(KEY_DECOY_VERIFIER, null) ?: return false
+        val salt = fromHex(saltHex)
+        val expectedVerifier = fromHex(verifierHex)
+        val computed = KeyDerivation.deriveCredentialVerifier(pin.toCharArray(), salt)
+        return computed.contentEquals(expectedVerifier)
+    }
+
+    var isIntruderCaptureEnabled: Boolean
+        get() = prefs.getBoolean(KEY_INTRUDER_CAPTURE_ENABLED, false)
+        set(value) = prefs.edit().putBoolean(KEY_INTRUDER_CAPTURE_ENABLED, value).apply()
+
     companion object {
         private const val PREFS_NAME = "vault_credentials"
         private const val KEY_IS_INITIALIZED = "is_initialized"
@@ -202,6 +234,10 @@ class VaultCredentialStore(context: Context) {
         private const val KEY_RECOVERY_ENCRYPTED_KEY = "recovery_encrypted_key"
         private const val KEY_RECOVERY_VERIFIER = "recovery_verifier"
         private const val KEY_ENCRYPTED_DISPLAY_RECOVERY_KEY = "encrypted_display_recovery_key"
+
+        private const val KEY_DECOY_SALT = "decoy_salt"
+        private const val KEY_DECOY_VERIFIER = "decoy_verifier"
+        private const val KEY_INTRUDER_CAPTURE_ENABLED = "intruder_capture_enabled"
 
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"
         private const val BIOMETRIC_KEY_ALIAS = "VaultSync_Biometric_Master_Key"

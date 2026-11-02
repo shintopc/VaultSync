@@ -1088,6 +1088,29 @@ private class FakeVaultRepository(
         destinationFile.writeText("Decrypted content of entry $entryId")
     }
     override suspend fun cleanupOrphanedBlobs() {}
+    override fun getTrashEntries(): Flow<List<VaultEntry>> = flowOf(entries.filter { it.isTrash })
+    override fun getTrashCount(): Flow<Int> = flowOf(entries.count { it.isTrash })
+    override suspend fun moveToTrash(entryId: String) {
+        val idx = entries.indexOfFirst { it.id == entryId }
+        if (idx != -1) {
+            entries[idx] = entries[idx].copy(isTrash = true, deletedAtMillis = System.currentTimeMillis())
+        }
+    }
+    override suspend fun restoreFromTrash(entryId: String) {
+        val idx = entries.indexOfFirst { it.id == entryId }
+        if (idx != -1) {
+            entries[idx] = entries[idx].copy(isTrash = false, deletedAtMillis = null)
+        }
+    }
+    override suspend fun emptyTrash() {
+        entries.removeAll { it.isTrash }
+    }
+    override suspend fun purgeExpiredTrash(retentionDays: Int): Int {
+        val cutoff = System.currentTimeMillis() - (retentionDays.toLong() * 24L * 60L * 60L * 1000L)
+        val initialSize = entries.size
+        entries.removeAll { it.isTrash && (it.deletedAtMillis ?: 0L) < cutoff }
+        return initialSize - entries.size
+    }
 }
 
 private class FakeMediaRepository(

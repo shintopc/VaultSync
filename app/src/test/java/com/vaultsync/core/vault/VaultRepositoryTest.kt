@@ -79,18 +79,18 @@ class FakeVaultEntryDao : VaultEntryDao {
 
     override fun getByFolderId(folderId: String?): Flow<List<VaultEntryEntity>> {
         return entries.map { map ->
-            map.values.filter { it.folderId == folderId }.sortedByDescending { it.createdAtMillis }
+            map.values.filter { !it.isTrash && it.folderId == folderId }.sortedByDescending { it.createdAtMillis }
         }
     }
 
     override fun getByCategory(category: String): Flow<List<VaultEntryEntity>> {
         return entries.map { map ->
-            map.values.filter { it.category == category }.sortedByDescending { it.createdAtMillis }
+            map.values.filter { !it.isTrash && it.category == category }.sortedByDescending { it.createdAtMillis }
         }
     }
 
     override fun getAll(): Flow<List<VaultEntryEntity>> {
-        return entries.map { map -> map.values.sortedByDescending { it.createdAtMillis } }
+        return entries.map { map -> map.values.filter { !it.isTrash }.sortedByDescending { it.createdAtMillis } }
     }
 
     override suspend fun getCountInFolder(folderId: String): Int {
@@ -114,6 +114,50 @@ class FakeVaultEntryDao : VaultEntryDao {
     }
 
     override suspend fun getAllEntryIds(): List<String> = entries.value.keys.toList()
+
+    override fun getTrashEntries(): Flow<List<VaultEntryEntity>> {
+        return entries.map { map ->
+            map.values.filter { it.isTrash }.sortedByDescending { it.deletedAtMillis ?: 0L }
+        }
+    }
+
+    override fun getTrashCount(): Flow<Int> {
+        return entries.map { map -> map.values.count { it.isTrash } }
+    }
+
+    override suspend fun getTrashCountDirect(): Int {
+        return entries.value.values.count { it.isTrash }
+    }
+
+    override suspend fun moveToTrash(id: String, deletedAt: Long) {
+        entries.value[id]?.let {
+            entries.value = entries.value + (id to it.copy(isTrash = true, deletedAtMillis = deletedAt))
+        }
+    }
+
+    override suspend fun restoreFromTrash(id: String) {
+        entries.value[id]?.let {
+            entries.value = entries.value + (id to it.copy(isTrash = false, deletedAtMillis = null))
+        }
+    }
+
+    override suspend fun getExpiredTrash(cutoff: Long): List<VaultEntryEntity> {
+        return entries.value.values.filter { it.isTrash && (it.deletedAtMillis ?: 0L) < cutoff }
+    }
+
+    override suspend fun emptyTrash() {
+        entries.value = entries.value.filterValues { !it.isTrash }
+    }
+
+    override suspend fun updateContentHash(id: String, hash: String) {
+        entries.value[id]?.let {
+            entries.value = entries.value + (id to it.copy(contentHash = hash))
+        }
+    }
+
+    override suspend fun getAllActiveList(): List<VaultEntryEntity> {
+        return entries.value.values.filter { !it.isTrash }
+    }
 }
 
 class VaultRepositoryTest {
@@ -332,5 +376,73 @@ class VaultRepositoryTest {
         repository.moveFolder(child.id, null)
         val updatedChild = repository.getFolder(child.id)
         assertNull(updatedChild?.parentId)
+    }
+
+    @Test
+    fun trashWorkflowMoveRestoreEmptyAndPurge(): Unit = runBlocking {
+        val file1 = tempFolder.newFile("doc1.txt").apply { writeBytes("Document 1".toByteArray()) }
+        val file2 = tempFolder.newFile("doc2.txt").apply { writeBytes("Document 2".toByteArray()) }
+        val entry1 = repository.importFile(file1, vmk = vmk)
+        val entry2 = repository.importFile(file2, vmk = vmk)
+
+        assertEquals(2, repository.getAllEntries().first().size)
+        assertEquals(0, repository.getTrashCount().first())
+
+        // 1. Move entry1 to trash
+        repository.moveToTrash(entry1.id)
+        val activeAfterTrash = repository.getAllEntries().first()
+        assertEquals(1, activeAfterTrash.size)
+        assertEquals(entry2.id, activeAfterTrash.first().id)
+        assertEquals(1, repository.getTrashCount().first())
+
+        val trashEntries = repository.getTrashEntries().first()
+        assertEquals(1, trashEntries.size)
+        assertEquals(entry1.id, trashEntries.first().id)
+        assertTrue(trashEntries.first().isTrash)
+        assertNotNull(trashEntries.first().deletedAtMillis)
+
+        // 2. Restore entry1 from trash
+        repository.restoreFromTrash(entry1.id)
+        assertEquals(2, repository.getAllEntries().first().size)
+        assertEquals(0, repository.getTrashCount().first())
+
+        // 3. Move both to trash and empty trash
+        repository.moveToTrash(entry1.id)
+        repository.moveToTrash(entry2.id)
+        assertEquals(2, repository.getTrashCount().first())
+
+        val blob1 = storageManager.getEncryptedBlobFile(entry1.id)
+        val blob2 = storageManager.getEncryptedBlobFile(entry2.id)
+        assertTrue(blob1.exists())
+        assertTrue(blob2.exists())
+
+        repository.emptyTrash()
+        assertEquals(0, repository.getTrashCount().first())
+        assertFalse(blob1.exists())
+        assertFalse(blob2.exists())
+    }
+
+    @Test
+    fun purgeExpiredTrashPurgesOnlyEntriesOlderThanCutoff(): Unit = runBlocking {
+        val fileOld = tempFolder.newFile("old.txt").apply { writeBytes("Old File".toByteArray()) }
+        val fileNew = tempFolder.newFile("new.txt").apply { writeBytes("New File".toByteArray()) }
+        val entryOld = repository.importFile(fileOld, vmk = vmk)
+        val entryNew = repository.importFile(fileNew, vmk = vmk)
+
+        // Simulate entryOld deleted 35 days ago, entryNew deleted 5 days ago
+        val now = System.currentTimeMillis()
+        val thirtyFiveDaysAgo = now - (35L * 24 * 60 * 60 * 1000)
+        val fiveDaysAgo = now - (5L * 24 * 60 * 60 * 1000)
+
+        entryDao.moveToTrash(entryOld.id, thirtyFiveDaysAgo)
+        entryDao.moveToTrash(entryNew.id, fiveDaysAgo)
+
+        assertEquals(2, repository.getTrashCount().first())
+        val purgedCount = repository.purgeExpiredTrash(retentionDays = 30)
+        assertEquals(1, purgedCount)
+
+        val remainingTrash = repository.getTrashEntries().first()
+        assertEquals(1, remainingTrash.size)
+        assertEquals(entryNew.id, remainingTrash.first().id)
     }
 }

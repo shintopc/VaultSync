@@ -44,6 +44,7 @@ enum class VaultViewTab {
     PHOTOS,
     ALBUMS,
     AUDIO,
+    TRASH,
 }
 
 data class VaultAlbumDisplay(
@@ -55,8 +56,14 @@ data class VaultAlbumDisplay(
 data class VaultUiState(
     val isInitialized: Boolean = false,
     val isUnlocked: Boolean = false,
+    val isDecoyVault: Boolean = false,
+    val isDecoyPinSet: Boolean = false,
     val isBiometricEnabled: Boolean = false,
     val canUseBiometric: Boolean = false,
+    val isIntruderCaptureEnabled: Boolean = false,
+    val intruderLogs: List<com.vaultsync.core.security.IntruderLogEntry> = emptyList(),
+    val showIntruderLogsDialog: Boolean = false,
+    val showDecoyPinDialog: Boolean = false,
     val viewTab: VaultViewTab = VaultViewTab.ALBUMS,
     val selectedEntryIds: Set<String> = emptySet(),
     val currentFolderId: String? = null,
@@ -102,6 +109,11 @@ data class VaultUiState(
     val migrationProgress: com.vaultsync.core.migration.MigrationProgress? = null,
     val showMigrationDialog: Boolean = false,
     val showRestoreDialog: Boolean = false,
+    val storageOptimizationReport: com.vaultsync.core.storage.StorageOptimizationReport? = null,
+    val isOptimizingStorage: Boolean = false,
+    val showStorageOptimizerDialog: Boolean = false,
+    val isBackupInProgress: Boolean = false,
+    val backupProgressText: String? = null,
 ) {
     val hasSelection: Boolean get() = selectedEntryIds.isNotEmpty()
 }
@@ -126,6 +138,8 @@ class VaultViewModel(
         VaultUiState(
             isInitialized = container.credentialStore.isInitialized,
             isUnlocked = session.isUnlocked.value,
+            isDecoyPinSet = container.credentialStore.isDecoyPinSet,
+            isIntruderCaptureEnabled = container.credentialStore.isIntruderCaptureEnabled,
             isBiometricEnabled = container.credentialStore.isBiometricEnabled,
             canUseBiometric = container.credentialStore.canUseBiometric(),
             hasRecoveryKey = container.credentialStore.hasRecoveryKey,
@@ -145,7 +159,9 @@ class VaultViewModel(
 
     val filteredFolders: StateFlow<List<VaultFolder>> =
         combine(repository.getAllFolders(), _uiState) { all, state ->
-            if (state.selectedCategory != VaultCategory.All && state.currentFolderId == null) {
+            if (state.isDecoyVault) {
+                emptyList()
+            } else if (state.selectedCategory != VaultCategory.All && state.currentFolderId == null) {
                 emptyList()
             } else {
                 val currentLevel = all.filter { it.parentId == state.currentFolderId }
@@ -157,13 +173,17 @@ class VaultViewModel(
 
     val filteredEntries: StateFlow<List<VaultEntry>> =
         combine(repository.getAllEntries(), _uiState) { allEntries, state ->
-            val inScope = allEntries.filter { entry ->
-                entry.folderId == state.currentFolderId &&
-                    (state.selectedCategory == VaultCategory.All || entry.category == state.selectedCategory)
+            if (state.isDecoyVault) {
+                emptyList()
+            } else {
+                val inScope = allEntries.filter { entry ->
+                    entry.folderId == state.currentFolderId &&
+                        (state.selectedCategory == VaultCategory.All || entry.category == state.selectedCategory)
+                }
+                val query = state.searchQuery.trim().lowercase()
+                val searched = if (query.isBlank()) inScope else inScope.filter { it.originalFileName.lowercase().contains(query) }
+                sortEntries(searched, state.sortOption)
             }
-            val query = state.searchQuery.trim().lowercase()
-            val searched = if (query.isBlank()) inScope else inScope.filter { it.originalFileName.lowercase().contains(query) }
-            sortEntries(searched, state.sortOption)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val thumbnailManager: com.vaultsync.core.storage.VaultThumbnailManager = container.thumbnailManager
@@ -190,55 +210,86 @@ class VaultViewModel(
 
     val photoEntries: StateFlow<List<VaultEntry>> =
         combine(repository.getAllEntries(), _uiState) { entries, state ->
-            val media = entries.filter {
-                (it.category == VaultCategory.Images || it.category == VaultCategory.Videos) &&
-                it.folderId == state.currentFolderId
+            if (state.isDecoyVault) {
+                emptyList()
+            } else {
+                val media = entries.filter {
+                    (it.category == VaultCategory.Images || it.category == VaultCategory.Videos) &&
+                    it.folderId == state.currentFolderId
+                }
+                val query = state.searchQuery.trim().lowercase()
+                val filtered = if (query.isBlank()) media else media.filter { it.originalFileName.lowercase().contains(query) }
+                sortEntries(filtered, state.sortOption)
             }
-            val query = state.searchQuery.trim().lowercase()
-            val filtered = if (query.isBlank()) media else media.filter { it.originalFileName.lowercase().contains(query) }
-            sortEntries(filtered, state.sortOption)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val audioEntries: StateFlow<List<VaultEntry>> =
         combine(repository.getAllEntries(), _uiState) { entries, state ->
-            val audios = entries.filter {
-                it.category == VaultCategory.Audio
+            if (state.isDecoyVault) {
+                emptyList()
+            } else {
+                val audios = entries.filter {
+                    it.category == VaultCategory.Audio
+                }
+                val query = state.searchQuery.trim().lowercase()
+                val filtered = if (query.isBlank()) audios else audios.filter { it.originalFileName.lowercase().contains(query) }
+                sortEntries(filtered, state.sortOption)
             }
-            val query = state.searchQuery.trim().lowercase()
-            val filtered = if (query.isBlank()) audios else audios.filter { it.originalFileName.lowercase().contains(query) }
-            sortEntries(filtered, state.sortOption)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val trashEntries: StateFlow<List<VaultEntry>> = repository.getTrashEntries()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val trashCount: StateFlow<Int> = repository.getTrashCount()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     val vaultAlbums: StateFlow<List<VaultAlbumDisplay>> =
         combine(repository.getAllFolders(), repository.getAllEntries(), _uiState) { folders, entries, state ->
-            val query = state.searchQuery.trim().lowercase()
-            val list = mutableListOf<VaultAlbumDisplay>()
-
-            // 1. Root folder for unfiled vault media
-            val rootMedia = entries.filter { it.folderId == null && it.category != VaultCategory.Audio }
-            if (rootMedia.isNotEmpty()) {
-                val rootFolder = VaultFolder(
-                    id = "__root__",
-                    name = "Main Vault",
-                    parentId = null,
-                    createdAtMillis = 0L,
-                    updatedAtMillis = 0L,
-                    itemCount = rootMedia.size,
+            if (state.isDecoyVault) {
+                listOf(
+                    VaultAlbumDisplay(
+                        folder = VaultFolder(
+                            id = "__decoy__",
+                            name = "Documents",
+                            parentId = null,
+                            createdAtMillis = System.currentTimeMillis(),
+                            updatedAtMillis = System.currentTimeMillis(),
+                            itemCount = 0,
+                        ),
+                        previewEntries = emptyList(),
+                        totalCount = 0,
+                    )
                 )
-                if (query.isBlank() || rootFolder.name.lowercase().contains(query)) {
-                    list.add(VaultAlbumDisplay(rootFolder, rootMedia.take(3), rootMedia.size))
-                }
-            }
+            } else {
+                val query = state.searchQuery.trim().lowercase()
+                val list = mutableListOf<VaultAlbumDisplay>()
 
-            // 2. Subfolders
-            val topLevelFolders = folders.filter { it.parentId == null }
-            for (folder in topLevelFolders) {
-                val folderMedia = entries.filter { it.folderId == folder.id && it.category != VaultCategory.Audio }
-                if (query.isBlank() || folder.name.lowercase().contains(query)) {
-                    list.add(VaultAlbumDisplay(folder, folderMedia.take(3), folderMedia.size))
+                // 1. Root folder for unfiled vault media
+                val rootMedia = entries.filter { it.folderId == null && it.category != VaultCategory.Audio }
+                if (rootMedia.isNotEmpty()) {
+                    val rootFolder = VaultFolder(
+                        id = "__root__",
+                        name = "Main Vault",
+                        parentId = null,
+                        createdAtMillis = 0L,
+                        updatedAtMillis = 0L,
+                        itemCount = rootMedia.size,
+                    )
+                    if (query.isBlank() || rootFolder.name.lowercase().contains(query)) {
+                        list.add(VaultAlbumDisplay(rootFolder, rootMedia.take(3), rootMedia.size))
+                    }
                 }
+
+                // 2. Subfolders
+                val topLevelFolders = folders.filter { it.parentId == null }
+                for (folder in topLevelFolders) {
+                    val folderMedia = entries.filter { it.folderId == folder.id && it.category != VaultCategory.Audio }
+                    if (query.isBlank() || folder.name.lowercase().contains(query)) {
+                        list.add(VaultAlbumDisplay(folder, folderMedia.take(3), folderMedia.size))
+                    }
+                }
+                list
             }
-            list
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun setViewTab(tab: VaultViewTab) {
@@ -333,10 +384,27 @@ class VaultViewModel(
         }
     }
 
+    private var failedAttemptsCount = 0
+
     fun unlockWithPin(pinOrPassword: String) {
         val clean = pinOrPassword.trim()
         if (clean.isEmpty()) return
 
+        // 1. Check Decoy PIN first (Coercion / Duress protection)
+        if (container.credentialStore.isDecoyPinSet && container.credentialStore.verifyDecoyPin(clean)) {
+            failedAttemptsCount = 0
+            _uiState.update {
+                it.copy(
+                    isUnlocked = true,
+                    isDecoyVault = true,
+                    errorMessage = null,
+                    infoMessage = null,
+                )
+            }
+            return
+        }
+
+        // 2. Normal Master PIN unlock
         val wrappedVmk = container.credentialStore.getWrappedVmk()
         if (wrappedVmk == null) {
             _uiState.update { it.copy(errorMessage = "Vault credentials not found. Please setup vault.") }
@@ -348,8 +416,18 @@ class VaultViewModel(
                 val vmk = VaultKeyManager.unwrapVaultMasterKey(wrappedVmk, clean.toCharArray())
                 session.unlock(vmk)
                 VaultKeyManager.zeroize(vmk)
-                _uiState.update { it.copy(isUnlocked = true, errorMessage = null) }
+                failedAttemptsCount = 0
+                // Auto purge expired trash items (> 30 days) on successful unlock
+                try {
+                    repository.purgeExpiredTrash(retentionDays = 30)
+                } catch (_: Exception) {}
+                _uiState.update { it.copy(isUnlocked = true, isDecoyVault = false, errorMessage = null) }
+                syncManifestIfSharedStorage()
             } catch (e: Exception) {
+                failedAttemptsCount++
+                if (container.credentialStore.isIntruderCaptureEnabled && failedAttemptsCount >= 3) {
+                    com.vaultsync.core.security.IntruderCaptureManager.recordAttempt(getApplication(), failedAttemptsCount)
+                }
                 _uiState.update { it.copy(errorMessage = "Incorrect PIN or password. Please try again.") }
             }
         }
@@ -362,11 +440,24 @@ class VaultViewModel(
                 if (vmk != null && vmk.size == 32) {
                     session.unlock(vmk)
                     VaultKeyManager.zeroize(vmk)
-                    _uiState.update { it.copy(isUnlocked = true, errorMessage = null) }
+                    failedAttemptsCount = 0
+                    try {
+                        repository.purgeExpiredTrash(retentionDays = 30)
+                    } catch (_: Exception) {}
+                    _uiState.update { it.copy(isUnlocked = true, isDecoyVault = false, errorMessage = null) }
+                    syncManifestIfSharedStorage()
                 } else {
+                    failedAttemptsCount++
+                    if (container.credentialStore.isIntruderCaptureEnabled && failedAttemptsCount >= 3) {
+                        com.vaultsync.core.security.IntruderCaptureManager.recordAttempt(getApplication(), failedAttemptsCount)
+                    }
                     _uiState.update { it.copy(errorMessage = "Biometric authentication failed to unwrap key.") }
                 }
             } catch (e: Exception) {
+                failedAttemptsCount++
+                if (container.credentialStore.isIntruderCaptureEnabled && failedAttemptsCount >= 3) {
+                    com.vaultsync.core.security.IntruderCaptureManager.recordAttempt(getApplication(), failedAttemptsCount)
+                }
                 _uiState.update { it.copy(errorMessage = "Biometric error: ${e.message}") }
             }
         }
@@ -383,9 +474,11 @@ class VaultViewModel(
             thumbnailManager.clearAllThumbnails()
             _thumbnailCache.value = emptyMap()
             session.lock()
+            failedAttemptsCount = 0
             _uiState.update {
                 it.copy(
                     isUnlocked = false,
+                    isDecoyVault = false,
                     currentFolderId = null,
                     currentFolder = null,
                     breadcrumbs = emptyList(),
@@ -611,6 +704,231 @@ class VaultViewModel(
                         entryToDelete = null,
                         errorMessage = e.message ?: "Failed to delete file",
                     )
+                }
+            }
+        }
+    }
+
+    fun moveEntryToTrash(entryId: String) {
+        viewModelScope.launch {
+            try {
+                val currentViewerItems = _uiState.value.activeViewerItems
+                if (currentViewerItems.any { it.id == entryId }) {
+                    val remaining = currentViewerItems.filter { it.id != entryId }
+                    if (remaining.isEmpty()) {
+                        closeViewer()
+                    } else {
+                        val currentIdx = _uiState.value.activeViewerIndex ?: 0
+                        val nextIdx = currentIdx.coerceAtMost(remaining.size - 1)
+                        _uiState.update {
+                            it.copy(
+                                activeViewerItems = remaining,
+                                activeViewerIndex = nextIdx,
+                            )
+                        }
+                    }
+                }
+                if (_uiState.value.activePreviewEntry?.id == entryId) {
+                    closePreview()
+                }
+
+                repository.moveToTrash(entryId)
+                closeDeleteEntryDialog()
+                _uiState.update { it.copy(infoMessage = "Item moved to Vault Trash (kept for 30 days).") }
+                syncManifestIfSharedStorage()
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "Failed to move to trash: ${e.message}") }
+            }
+        }
+    }
+
+    fun restoreEntryFromTrash(entryId: String) {
+        viewModelScope.launch {
+            try {
+                repository.restoreFromTrash(entryId)
+                _uiState.update { it.copy(infoMessage = "Item restored to vault.") }
+                syncManifestIfSharedStorage()
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "Cannot restore item: ${e.message}") }
+            }
+        }
+    }
+
+    fun emptyVaultTrash() {
+        viewModelScope.launch {
+            try {
+                repository.emptyTrash()
+                _uiState.update { it.copy(infoMessage = "Vault trash permanently cleared.") }
+                syncManifestIfSharedStorage()
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "Failed to empty trash: ${e.message}") }
+            }
+        }
+    }
+
+    fun moveSelectedEntriesToTrash() {
+        val selectedIds = _uiState.value.selectedEntryIds
+        if (selectedIds.isEmpty()) return
+        viewModelScope.launch {
+            try {
+                for (id in selectedIds) {
+                    repository.moveToTrash(id)
+                }
+                val count = selectedIds.size
+                clearSelection()
+                _uiState.update { it.copy(infoMessage = "Moved $count item(s) to Vault Trash.") }
+                syncManifestIfSharedStorage()
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "Failed to move items to trash: ${e.message}") }
+            }
+        }
+    }
+
+    // --- Decoy PIN (Duress Mode) ---
+    fun openDecoyPinDialog() = _uiState.update { it.copy(showDecoyPinDialog = true) }
+    fun closeDecoyPinDialog() = _uiState.update { it.copy(showDecoyPinDialog = false) }
+
+    fun setDecoyPin(pin: String) {
+        val clean = pin.trim()
+        if (clean.length < 4) {
+            _uiState.update { it.copy(errorMessage = "Decoy PIN must be at least 4 digits.") }
+            return
+        }
+        container.credentialStore.setDecoyPin(clean)
+        _uiState.update {
+            it.copy(
+                isDecoyPinSet = true,
+                showDecoyPinDialog = false,
+                infoMessage = "Decoy PIN configured. Entering it on lock screen will open a safe dummy vault.",
+            )
+        }
+    }
+
+    fun clearDecoyPin() {
+        container.credentialStore.clearDecoyPin()
+        _uiState.update {
+            it.copy(
+                isDecoyPinSet = false,
+                showDecoyPinDialog = false,
+                infoMessage = "Decoy PIN disabled.",
+            )
+        }
+    }
+
+    // --- Intruder Capture & Break-In Logs ---
+    fun toggleIntruderCapture(enabled: Boolean) {
+        container.credentialStore.isIntruderCaptureEnabled = enabled
+        _uiState.update { it.copy(isIntruderCaptureEnabled = enabled) }
+    }
+
+    fun openIntruderLogsDialog() {
+        val logs = com.vaultsync.core.security.IntruderCaptureManager.getLogs(getApplication())
+        _uiState.update { it.copy(intruderLogs = logs, showIntruderLogsDialog = true) }
+    }
+
+    fun closeIntruderLogsDialog() = _uiState.update { it.copy(showIntruderLogsDialog = false) }
+
+    fun clearIntruderLogs() {
+        com.vaultsync.core.security.IntruderCaptureManager.clearLogs(getApplication())
+        _uiState.update { it.copy(intruderLogs = emptyList(), infoMessage = "Break-in logs cleared.") }
+    }
+
+    // --- Storage Optimizer & Deduplication ---
+    fun openStorageOptimizerDialog() = _uiState.update { it.copy(showStorageOptimizerDialog = true) }
+    fun closeStorageOptimizerDialog() = _uiState.update { it.copy(showStorageOptimizerDialog = false) }
+
+    fun runStorageOptimizationAnalysis() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isOptimizingStorage = true, showStorageOptimizerDialog = true) }
+            try {
+                session.withVmkSuspend { vmk ->
+                    val report = com.vaultsync.core.storage.VaultStorageOptimizer.analyzeStorage(
+                        database = container.database,
+                        storageManager = container.storageManager,
+                        vmk = vmk,
+                    )
+                    _uiState.update { it.copy(storageOptimizationReport = report, isOptimizingStorage = false) }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isOptimizingStorage = false, errorMessage = "Optimizer scan failed: ${e.message}") }
+            }
+        }
+    }
+
+    fun cleanDuplicateFiles(moveToTrash: Boolean = true) {
+        val report = _uiState.value.storageOptimizationReport ?: return
+        viewModelScope.launch {
+            try {
+                val count = com.vaultsync.core.storage.VaultStorageOptimizer.removeDuplicates(
+                    repository = repository,
+                    duplicateGroups = report.duplicateGroups,
+                    moveToTrash = moveToTrash,
+                )
+                _uiState.update {
+                    it.copy(
+                        storageOptimizationReport = null,
+                        showStorageOptimizerDialog = false,
+                        infoMessage = "Successfully cleaned $count duplicate file(s)!",
+                    )
+                }
+                syncManifestIfSharedStorage()
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "Failed cleaning duplicates: ${e.message}") }
+            }
+        }
+    }
+
+    // --- One-Click Encrypted Portable Backup (.vsbackup) ---
+    fun exportPortableBackup(destinationUri: Uri) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isBackupInProgress = true, backupProgressText = "Preparing encrypted backup archive...") }
+            try {
+                val metadata = com.vaultsync.core.backup.VaultBackupManager.createBackup(
+                    context = getApplication(),
+                    destinationUri = destinationUri,
+                    storageManager = container.storageManager,
+                    onProgress = { current, total ->
+                        _uiState.update { it.copy(backupProgressText = "Exporting file $current of $total...") }
+                    }
+                )
+                _uiState.update {
+                    it.copy(
+                        isBackupInProgress = false,
+                        backupProgressText = null,
+                        infoMessage = "Portable backup created successfully (${metadata.blobCount} files, ${formatFileSize(metadata.totalSizeBytes)})",
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(isBackupInProgress = false, backupProgressText = null, errorMessage = "Backup failed: ${e.message}")
+                }
+            }
+        }
+    }
+
+    fun importPortableBackup(sourceUri: Uri) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isBackupInProgress = true, backupProgressText = "Restoring backup archive...") }
+            try {
+                val restored = com.vaultsync.core.backup.VaultBackupManager.restoreBackup(
+                    context = getApplication(),
+                    sourceUri = sourceUri,
+                    storageManager = container.storageManager,
+                    onProgress = { current, total ->
+                        _uiState.update { it.copy(backupProgressText = "Extracting file $current of $total...") }
+                    }
+                )
+                _uiState.update {
+                    it.copy(
+                        isBackupInProgress = false,
+                        backupProgressText = null,
+                        infoMessage = "Restored $restored encrypted files from backup. Verifying vault manifest...",
+                    )
+                }
+                checkForExistingVault()
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(isBackupInProgress = false, backupProgressText = null, errorMessage = "Restore failed: ${e.message}")
                 }
             }
         }
