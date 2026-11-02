@@ -258,4 +258,18 @@ object VaultFileDecryptor {
             VaultKeyManager.zeroize(dek)
         }
     }
+
+    /**
+     * Reads and decrypts up to [maxBytes] from the beginning of [encryptedFile].
+     * Useful for MIME type detection and magic bytes identification without full file decryption.
+     */
+    fun readSamplePlaintext(encryptedFile: File, vmk: ByteArray, maxBytes: Int = 1024): ByteArray {
+        val bos = java.io.ByteArrayOutputStream()
+        try {
+            readRange(encryptedFile, vmk, 0L, maxBytes.toLong(), bos)
+        } catch (_: Exception) {
+            return ByteArray(0)
+        }
+        return bos.toByteArray()
+    }
 }

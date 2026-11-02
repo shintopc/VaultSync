@@ -126,4 +126,43 @@ class VaultRecoveryLogicTest {
         assertEquals(1, toInsert.size)
         assertEquals("e2", toInsert[0].id)
     }
+
+    @Test
+    fun testDetectMimeTypeSignatures() {
+        // JPEG
+        val jpegHeader = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xE0.toByte())
+        assertEquals("image/jpeg" to "jpg", VaultRecoveryManager.detectMimeType(jpegHeader))
+
+        // PNG
+        val pngHeader = byteArrayOf(0x89.toByte(), 0x50.toByte(), 0x4E.toByte(), 0x47.toByte(), 0x0D.toByte(), 0x0A.toByte(), 0x1A.toByte(), 0x0A.toByte())
+        assertEquals("image/png" to "png", VaultRecoveryManager.detectMimeType(pngHeader))
+
+        // GIF
+        val gifHeader = "GIF89a".toByteArray()
+        assertEquals("image/gif" to "gif", VaultRecoveryManager.detectMimeType(gifHeader))
+
+        // WebP
+        val webpHeader = "RIFF1234WEBP".toByteArray()
+        assertEquals("image/webp" to "webp", VaultRecoveryManager.detectMimeType(webpHeader))
+
+        // PDF
+        val pdfHeader = "%PDF-1.4".toByteArray()
+        assertEquals("application/pdf" to "pdf", VaultRecoveryManager.detectMimeType(pdfHeader))
+
+        // MP4
+        val mp4Header = byteArrayOf(0, 0, 0, 24) + "ftypisom".toByteArray()
+        assertEquals("video/mp4" to "mp4", VaultRecoveryManager.detectMimeType(mp4Header))
+
+        // MKV / WebM
+        val mkvHeader = byteArrayOf(0x1A.toByte(), 0x45.toByte(), 0xDF.toByte(), 0xA3.toByte())
+        assertEquals("video/webm" to "mkv", VaultRecoveryManager.detectMimeType(mkvHeader))
+
+        // ZIP
+        val zipHeader = byteArrayOf(0x50.toByte(), 0x4B.toByte(), 0x03.toByte(), 0x04.toByte())
+        assertEquals("application/zip" to "zip", VaultRecoveryManager.detectMimeType(zipHeader))
+
+        // Unknown fallback
+        val unknownHeader = byteArrayOf(1, 2, 3, 4, 5)
+        assertEquals("application/octet-stream" to "bin", VaultRecoveryManager.detectMimeType(unknownHeader))
+    }
 }

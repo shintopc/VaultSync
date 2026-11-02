@@ -48,11 +48,16 @@ import com.vaultsync.core.recovery.VaultDiscoveryResult
 @Composable
 fun VaultRestoreDialog(
     isOpen: Boolean,
-    detectedVault: VaultDiscoveryResult.Detected?,
+    detectedVault: VaultDiscoveryResult.Detected? = null,
+    detectedCorruptedVault: VaultDiscoveryResult.Corrupted? = null,
     onDismiss: () -> Unit,
     onRestore: (String, Boolean) -> Unit,
 ) {
-    if (!isOpen || detectedVault == null) return
+    if (!isOpen || (detectedVault == null && detectedCorruptedVault == null)) return
+
+    val isDeepScan = detectedVault == null && detectedCorruptedVault != null
+    val blobCount = detectedVault?.blobCount ?: detectedCorruptedVault?.blobCount ?: 0
+    val folderName = detectedVault?.vaultDir?.name ?: detectedCorruptedVault?.vaultDir?.name ?: "VaultSync"
 
     var selectedTabIndex by remember { mutableStateOf(0) } // 0 = Master PIN/Password, 1 = Recovery Key
     var credentialInput by remember { mutableStateOf("") }
@@ -75,13 +80,14 @@ fun VaultRestoreDialog(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = "Restore Existing Vault",
+                            text = if (isDeepScan) "Emergency Deep Scan" else "Restore Existing Vault",
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp,
                         )
                         Text(
-                            text = "Found ${detectedVault.blobCount} files in ${detectedVault.vaultDir.name}",
+                            text = if (isDeepScan) "Found $blobCount encrypted files in $folderName"
+                            else "Found $blobCount files in $folderName",
                             color = Color(0xFF38BDF8),
                             fontSize = 12.sp,
                         )
@@ -189,7 +195,7 @@ fun VaultRestoreDialog(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                         }
-                        Text("Restore & Unlock", fontWeight = FontWeight.Bold)
+                        Text(if (isDeepScan) "Deep Scan & Recover" else "Restore & Unlock", fontWeight = FontWeight.Bold)
                     }
                 }
             }

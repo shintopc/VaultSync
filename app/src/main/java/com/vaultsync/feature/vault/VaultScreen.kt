@@ -61,13 +61,18 @@ fun VaultScreen(
         )
     }
 
-    if (uiState.showRestoreDialog && uiState.detectedVault != null) {
+    if (uiState.showRestoreDialog && (uiState.detectedVault != null || uiState.detectedCorruptedVault != null)) {
         VaultRestoreDialog(
             isOpen = true,
             detectedVault = uiState.detectedVault,
+            detectedCorruptedVault = uiState.detectedCorruptedVault,
             onDismiss = { viewModel.closeRestoreDialog() },
             onRestore = { credential, isRecoveryKey ->
-                viewModel.recoverDetectedVault(credential, isRecoveryKey) { _, _ -> }
+                if (uiState.detectedVault != null) {
+                    viewModel.recoverDetectedVault(credential, isRecoveryKey) { _, _ -> }
+                } else if (uiState.detectedCorruptedVault != null) {
+                    viewModel.recoverCorruptedVaultWithDeepScan(credential, isRecoveryKey) { _, _ -> }
+                }
             },
         )
     }

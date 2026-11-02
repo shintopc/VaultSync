@@ -96,6 +96,7 @@ data class VaultUiState(
     val isRecoveryVerified: Boolean = false,
     val recoveryErrorMessage: String? = null,
     val detectedVault: com.vaultsync.core.recovery.VaultDiscoveryResult.Detected? = null,
+    val detectedCorruptedVault: com.vaultsync.core.recovery.VaultDiscoveryResult.Corrupted? = null,
     val isSharedStorageActive: Boolean = false,
     val isMigrationInProgress: Boolean = false,
     val migrationProgress: com.vaultsync.core.migration.MigrationProgress? = null,
@@ -1417,7 +1418,12 @@ class VaultViewModel(
                         }
                     }
                     is com.vaultsync.core.recovery.VaultDiscoveryResult.Corrupted -> {
-                        _uiState.update { it.copy(errorMessage = discovery.errorMessage) }
+                        _uiState.update {
+                            it.copy(
+                                detectedCorruptedVault = if (discovery.canDeepScan) discovery else null,
+                                errorMessage = discovery.errorMessage,
+                            )
+                        }
                     }
                     is com.vaultsync.core.recovery.VaultDiscoveryResult.NotFound -> {
                         _uiState.update { it.copy(infoMessage = "No vault found in Documents/VaultSync.") }
@@ -1428,7 +1434,7 @@ class VaultViewModel(
     }
 
     fun dismissDetectedVault() {
-        _uiState.update { it.copy(detectedVault = null) }
+        _uiState.update { it.copy(detectedVault = null, detectedCorruptedVault = null) }
     }
 
     fun recoverDetectedVault(
@@ -1462,6 +1468,7 @@ class VaultViewModel(
                             isInitialized = true,
                             isUnlocked = true,
                             detectedVault = null,
+                            detectedCorruptedVault = null,
                             showRestoreDialog = false,
                             isSharedStorageActive = true,
                             infoMessage = "Vault recovered successfully! Restored ${result.restoredFilesCount} files.",
@@ -1473,6 +1480,98 @@ class VaultViewModel(
                 } else {
                     _uiState.update { it.copy(errorMessage = result.errorMessage) }
                     onResult(false, result.errorMessage)
+                }
+            }
+        }
+    }
+
+    fun recoverCorruptedVaultWithDeepScan(
+        credentialInput: String,
+        isRecoveryKey: Boolean,
+        onResult: (Boolean, String?) -> Unit,
+    ) {
+        val corrupted = _uiState.value.detectedCorruptedVault ?: run {
+            onResult(false, "No vault found for Deep Scan")
+            return
+        }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = com.vaultsync.core.recovery.VaultRecoveryManager.recoverVaultWithDeepScan(
+                context = getApplication(),
+                database = container.database,
+                credentialStore = container.credentialStore,
+                session = session,
+                vaultDir = corrupted.vaultDir,
+                manifestCandidate = corrupted.manifestHeaderCandidate,
+                credentialInput = credentialInput,
+                isRecoveryKey = isRecoveryKey,
+            )
+
+            withContext(Dispatchers.Main) {
+                if (result.isSuccess) {
+                    container.storageManager.initDirectories()
+                    _thumbnailCache.update { emptyMap() }
+                    _uiState.update {
+                        it.copy(
+                            isInitialized = true,
+                            isUnlocked = true,
+                            detectedVault = null,
+                            detectedCorruptedVault = null,
+                            showRestoreDialog = false,
+                            isSharedStorageActive = true,
+                            infoMessage = "Deep Scan complete! Salvaged and restored ${result.restoredFilesCount} files into 'Recovered Files'.",
+                            errorMessage = null,
+                        )
+                    }
+                    syncManifestIfSharedStorage()
+                    onResult(true, null)
+                } else {
+                    _uiState.update { it.copy(errorMessage = result.errorMessage) }
+                    onResult(false, result.errorMessage)
+                }
+            }
+        }
+    }
+
+    /**
+     * Deep scans the current vault storage for any uncataloged or orphaned .vsf files
+     * and restores them into a 'Recovered Files' folder.
+     */
+    fun performDeepScanSalvage(onFinished: (Int) -> Unit = {}) {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (!session.isUnlocked.value) {
+                withContext(Dispatchers.Main) {
+                    _uiState.update { it.copy(errorMessage = "Vault must be unlocked to perform Deep Scan") }
+                    onFinished(0)
+                }
+                return@launch
+            }
+
+            try {
+                var salvagedCount = 0
+                session.withVmkSuspend { vmk ->
+                    salvagedCount = com.vaultsync.core.recovery.VaultRecoveryManager.salvageUncatalogedBlobs(
+                        database = container.database,
+                        blobsDir = container.storageManager.blobsDir,
+                        vmk = vmk,
+                    )
+                }
+                if (salvagedCount > 0) {
+                    container.syncManifest()
+                }
+                withContext(Dispatchers.Main) {
+                    _uiState.update {
+                        it.copy(
+                            infoMessage = if (salvagedCount > 0) "Deep Scan found and recovered $salvagedCount files into 'Recovered Files'."
+                            else "Deep Scan finished: No uncataloged files found."
+                        )
+                    }
+                    onFinished(salvagedCount)
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    _uiState.update { it.copy(errorMessage = "Deep Scan error: ${e.message}") }
+                    onFinished(0)
                 }
             }
         }

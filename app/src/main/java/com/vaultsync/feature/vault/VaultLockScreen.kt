@@ -25,12 +25,14 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.Backspace
+import androidx.compose.material.icons.rounded.Build
 import androidx.compose.material.icons.rounded.Fingerprint
 import androidx.compose.material.icons.rounded.FolderSpecial
 import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Shield
+import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -90,6 +92,37 @@ fun VaultLockScreen(
         contract = androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
     ) {
         viewModel.checkForExistingVault()
+    }
+
+    val openDocumentTreeLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree(),
+    ) { uri: android.net.Uri? ->
+        if (uri != null) {
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+                )
+            } catch (_: Exception) {}
+
+            var resolvedFile: java.io.File? = null
+            try {
+                val docId = android.provider.DocumentsContract.getTreeDocumentId(uri)
+                if (docId.startsWith("primary:")) {
+                    resolvedFile = java.io.File(android.os.Environment.getExternalStorageDirectory(), docId.removePrefix("primary:"))
+                } else if (docId.contains(":")) {
+                    val parts = docId.split(":", limit = 2)
+                    val candidate = java.io.File("/storage/${parts[0]}/${parts[1]}")
+                    if (candidate.exists()) resolvedFile = candidate
+                }
+            } catch (_: Exception) {}
+
+            if (resolvedFile != null && resolvedFile.exists()) {
+                viewModel.checkForExistingVault(resolvedFile)
+            } else {
+                viewModel.checkForExistingVault()
+            }
+        }
     }
 
     fun triggerBiometricPrompt() {
@@ -301,6 +334,70 @@ fun VaultLockScreen(
                                     modifier = Modifier.size(18.dp),
                                 )
                                 Text("Restore Detected Vault", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Uncataloged/Corrupted Vault Detected Card (Emergency Deep Scan)
+            if (!state.isInitialized && state.detectedCorruptedVault != null) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E24)),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, Color(0xFFFF9F0A), RoundedCornerShape(16.dp))
+                        .padding(bottom = 16.dp),
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Rounded.Warning,
+                                contentDescription = null,
+                                tint = Color(0xFFFF9F0A),
+                                modifier = Modifier.size(28.dp),
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "Uncataloged Vault Files Found",
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    fontSize = 16.sp,
+                                )
+                                Text(
+                                    text = "Found ${state.detectedCorruptedVault.blobCount} files without manifest in ${state.detectedCorruptedVault.vaultDir.name}",
+                                    color = Color(0xFFFF9F0A),
+                                    fontSize = 12.sp,
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = "Encrypted media was found, but the catalog manifest is missing or damaged. Run an Emergency Deep Scan with your Master PIN to salvage your files.",
+                            color = Color(0xFF94A3B8),
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp,
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(
+                            onClick = { viewModel.openRestoreDialog() },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9F0A)),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.fillMaxWidth().height(44.dp),
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Build,
+                                    contentDescription = null,
+                                    tint = Color.Black,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Text("Emergency Deep Scan & Salvage", fontWeight = FontWeight.Bold, color = Color.Black)
                             }
                         }
                     }
@@ -542,45 +639,79 @@ fun VaultLockScreen(
                 }
             }
 
-            if (!state.isInitialized && state.detectedVault == null && !isConfirmingSetup) {
+            if (!state.isInitialized && state.detectedVault == null && state.detectedCorruptedVault == null && !isConfirmingSetup) {
                 Spacer(modifier = Modifier.height(8.dp))
-                TextButton(
-                    onClick = {
-                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R && !android.os.Environment.isExternalStorageManager()) {
-                            try {
-                                val intent = android.content.Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
-                                    data = android.net.Uri.parse("package:${context.packageName}")
-                                }
-                                manageStorageLauncher.launch(intent)
-                            } catch (e: Exception) {
-                                try {
-                                    val intent = android.content.Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
-                                    manageStorageLauncher.launch(intent)
-                                } catch (e2: Exception) {
-                                    viewModel.checkForExistingVault()
-                                }
-                            }
-                        } else {
-                            viewModel.checkForExistingVault()
-                        }
-                    },
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    TextButton(
+                        onClick = {
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R && !android.os.Environment.isExternalStorageManager()) {
+                                try {
+                                    val intent = android.content.Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                                        data = android.net.Uri.parse("package:${context.packageName}")
+                                    }
+                                    manageStorageLauncher.launch(intent)
+                                } catch (e: Exception) {
+                                    try {
+                                        val intent = android.content.Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                                        manageStorageLauncher.launch(intent)
+                                    } catch (e2: Exception) {
+                                        viewModel.checkForExistingVault()
+                                    }
+                                }
+                            } else {
+                                viewModel.checkForExistingVault()
+                            }
+                        },
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Search,
-                            contentDescription = null,
-                            tint = Color(0xFF38BDF8),
-                            modifier = Modifier.size(16.dp),
-                        )
-                        Text(
-                            text = "Scan Documents for Existing Vault",
-                            color = Color(0xFF38BDF8),
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium,
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Search,
+                                contentDescription = null,
+                                tint = Color(0xFF38BDF8),
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Text(
+                                text = "Scan Documents",
+                                color = Color(0xFF38BDF8),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(4.dp))
+
+                    TextButton(
+                        onClick = {
+                            try {
+                                openDocumentTreeLauncher.launch(null)
+                            } catch (_: Exception) {}
+                        },
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.FolderSpecial,
+                                contentDescription = null,
+                                tint = Color(0xFF38BDF8),
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Text(
+                                text = "Select Folder (SAF)",
+                                color = Color(0xFF38BDF8),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                            )
+                        }
                     }
                 }
             }
